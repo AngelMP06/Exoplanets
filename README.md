@@ -1,0 +1,1 @@
+This project generates a dashboard from the data of exoplanets from NASA
