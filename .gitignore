@@ -1,1 +1,7 @@
 .venv
+.env
+
+# Claude files
+CLAUDE.md
+.claude
+.claudeignore
