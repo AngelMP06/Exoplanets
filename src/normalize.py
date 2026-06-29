@@ -1,6 +1,11 @@
+import logging
+
 import pandas as pd
 
 from extract import get_data
+
+
+logger = logging.getLogger(__name__)
 
 # Renombrado raw -> staging (ver schema.md, capa Staging)
 COLUMN_RENAME = {
@@ -35,6 +40,7 @@ def normalize():
     con nombres intuitivos y tipos casteados (ver schema.md -> stg_planets)."""
     data = get_data()
     df = pd.DataFrame(data)
+    logger.info("DataFrame crudo creado: %d filas, %d columnas", *df.shape)
 
     # nombres intuitivos
     df = df.rename(columns=COLUMN_RENAME)
@@ -42,8 +48,14 @@ def normalize():
     # año de descubrimiento como entero (Int64 admite nulos)
     df["discovery_year"] = df["discovery_year"].astype("Int64")
 
+    logger.info("Normalización completada: %d filas", len(df))
     return df
 
 
 if __name__ == "__main__":
-    print(normalize().info())
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+    df = normalize()
+    df.info()

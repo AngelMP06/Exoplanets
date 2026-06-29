@@ -1,7 +1,12 @@
+import logging
+
 import numpy as np
 import pandas as pd
 
 from normalize import normalize
+
+
+logger = logging.getLogger(__name__)
 
 # https://scholar.exoplanet.eu/spip.php?article291&lang=en
 
@@ -50,6 +55,8 @@ def spectral_type(teff):
 def transform(df):
     """Capa marts: recibe el df normalizado (staging) y añade las columnas
     calculadas y clasificaciones (ver schema.md -> mart_habitability)."""
+
+    logger.info("Iniciando transformación de %d filas", len(df))
 
     # star_luminosity_log está en log10(luminosidad solar); lo pasamos a lineal
     luminosity = 10 ** df["star_luminosity_log"]
@@ -111,9 +118,14 @@ def transform(df):
     # si no hay año, no se puede clasificar
     df.loc[df["discovery_year"].isna(), "discovery_era"] = "Desconocido"
 
+    logger.info("Transformación completada: %d filas, %d columnas", *df.shape)
     return df
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
     df = transform(normalize())
-    print(df.info())
+    df.info()

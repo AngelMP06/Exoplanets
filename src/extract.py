@@ -1,7 +1,11 @@
+import logging
+
 import requests
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 
+
+logger = logging.getLogger(__name__)
 
 URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
 
@@ -45,12 +49,23 @@ PARAMS = {
 def get_data(url=URL, params=PARAMS):
     """Capa raw: consulta la API TAP de NASA y devuelve los datos crudos (JSON).
     Reintenta hasta 3 veces (esperando 5 s) si la petición falla."""
-    response = requests.get(url, params=params, timeout=30)
-    response.raise_for_status()  # lanza error si el HTTP status es 4xx o 5xx
-    return response.json()
+    logger.info("Consultando API TAP de NASA: %s", url)
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()  # lanza error si el HTTP status es 4xx o 5xx
+    except requests.RequestException:
+        logger.exception("Fallo al consultar la API TAP")
+        raise
+    data = response.json()
+    logger.info("Petición correcta: %d filas recibidas", len(data))
+    return data
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
     data = get_data()
-    print(f"Filas recibidas: {len(data)}")
-    print(data[[0]])
+    logger.info("Filas recibidas: %d", len(data))
+    logger.info("Primera fila: %s", data[0])

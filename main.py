@@ -1,3 +1,4 @@
+import logging
 import sys
 from pathlib import Path
 
@@ -9,15 +10,22 @@ from transform import transform
 from load import load_to_s3
 
 
+logger = logging.getLogger(__name__)
+
+
 def main():
     # pipeline: raw (extract) -> staging (normalize) -> marts (transform)
     df = transform(normalize())
-    print(df)
 
     # guardar local y subir a S3
     load_to_s3(df, "planets.parquet")
-    print("Pipeline completado.")
+    logger.info("Pipeline completado.")
 
 
 if __name__ == "__main__":
+    # configuración única de logging para todo el pipeline
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
     main()
