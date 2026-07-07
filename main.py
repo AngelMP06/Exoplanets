@@ -1,4 +1,7 @@
 import logging
+
+from duckdb import df
+from src.extract import get_data
 import sys
 from pathlib import Path
 
@@ -14,13 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    # pipeline: raw (extract) -> staging (normalize) -> marts (transform)
-    df = transform(normalize())
+    # raw (extract)
+    df = get_data()
 
     # guardar local y subir a S3
     load_to_s3(df, "planets.parquet")
     logger.info("Pipeline completado.")
-
 
 if __name__ == "__main__":
     # configuración única de logging para todo el pipeline

@@ -4,6 +4,7 @@ import requests
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,8 @@ def get_data(url=URL, params=PARAMS):
         raise
     data = response.json()
     logger.info("Petición correcta: %d filas recibidas", len(data))
-    return data
+    df = pd.DataFrame(data)
+    return df
 
 
 if __name__ == "__main__":
@@ -66,6 +68,6 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-    data = get_data()
-    logger.info("Filas recibidas: %d", len(data))
-    logger.info("Primera fila: %s", data[0])
+    df = get_data()
+    logger.info("Filas recibidas: %d", len(df))
+    logger.info("Primera fila: %s", df.iloc[0])

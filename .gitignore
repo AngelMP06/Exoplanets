@@ -1,7 +1,9 @@
 .venv
+.venv-dbt
 .env
 
 # Claude files
 CLAUDE.md
 .claude
 .claudeignore
+

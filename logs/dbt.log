@@ -1,0 +1,30 @@
+[0m11:54:28.036081 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001D3BCFC2D50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001D3BBF59050>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001D3BBF7F610>]}
+
+
+============================== 11:54:28.046119 | ea6dc444-fdb6-4c0d-af63-18d0ba1486bd ==============================
+[0m11:54:28.046119 [info ] [MainThread]: Running with dbt=1.11.12
+[0m11:54:28.046119 [debug] [MainThread]: running dbt with arguments {'static_parser': 'True', 'no_print': 'None', 'version_check': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'target_path': 'None', 'printer_width': '80', 'write_json': 'True', 'empty': 'None', 'log_cache_events': 'False', 'introspect': 'True', 'cache_selected_only': 'False', 'log_format': 'default', 'debug': 'False', 'fail_fast': 'False', 'profiles_dir': 'C:\\Users\\HP\\.dbt', 'send_anonymous_usage_stats': 'True', 'quiet': 'False', 'warn_error': 'None', 'partial_parse': 'True', 'use_colors': 'True', 'indirect_selection': 'eager', 'invocation_command': 'dbt init exoplanets', 'use_experimental_parser': 'False', 'log_path': 'logs'}
+[0m11:54:28.071720 [info ] [MainThread]: Creating dbt configuration folder at C:\Users\HP\.dbt
+[0m11:54:28.081723 [debug] [MainThread]: Starter project path: C:\Users\HP\Desktop\Programacion\Workspace\Python\Exoplanets\.venv-dbt\Lib\site-packages\dbt\include\starter_project
+[0m11:54:28.096232 [info ] [MainThread]: 
+Your new dbt project "exoplanets" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m11:54:28.098236 [info ] [MainThread]: Setting up your profile.
+[0m12:00:28.419752 [info ] [MainThread]: Profile exoplanets written to C:\Users\HP\.dbt\profiles.yml using target's sample configuration. Once updated, you'll be able to start developing with dbt.
+[0m12:00:28.419752 [debug] [MainThread]: Command `dbt init` succeeded at 12:00:28.419752 after 360.46 seconds
+[0m12:00:28.419752 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001D3B567CB50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001D3BBF13150>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001D3BCFC3E50>]}
+[0m12:00:28.419752 [debug] [MainThread]: Flushing usage events
+[0m12:00:29.046419 [debug] [MainThread]: An error was encountered while trying to flush usage events

@@ -38,8 +38,7 @@ COLUMN_RENAME = {
 def normalize():
     """Capa staging: toma los datos crudos de la API y devuelve un df limpio
     con nombres intuitivos y tipos casteados (ver schema.md -> stg_planets)."""
-    data = get_data()
-    df = pd.DataFrame(data)
+    df = get_data()
     logger.info("DataFrame crudo creado: %d filas, %d columnas", *df.shape)
 
     # nombres intuitivos
