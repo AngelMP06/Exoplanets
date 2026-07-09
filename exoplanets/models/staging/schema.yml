@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: stg_planets
+    columns:
+      - name: planet_name
+        tests:
+          - unique
+          - not_null
+      
+      - name: star_name
+        tests:
+          - not_null
+      
+      - name: discovery_method
+        tests:
+          - not_null
+
+      - name: discovery_year
+        tests:
+          - not_null
+      

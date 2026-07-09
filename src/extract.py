@@ -69,5 +69,6 @@ if __name__ == "__main__":
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
     df = get_data()
+    print(df.isnull().sum())
     logger.info("Filas recibidas: %d", len(df))
     logger.info("Primera fila: %s", df.iloc[0])

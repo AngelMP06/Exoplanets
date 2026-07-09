@@ -2,8 +2,7 @@ version: 2
 
 sources:
   - name: raw
-    schema: main
     tables:
       - name: planets
-        external:
-          location: "s3://exoplanetas-pipeline-datos/raw/planets.parquet"
+        meta:
+          external_location: "s3://exoplanetas-pipeline-datos/raw/planets.parquet"

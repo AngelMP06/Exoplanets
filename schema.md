@@ -129,8 +129,8 @@ Columnas añadidas (además de las de `stg_planets`):
 
 - **habitability** — `eff_distance` vs. la zona habitable:
   - `Zona habitable`: entre `hz_inner` y `hz_outer`
-  - `Más caliente`: más cerca que `hz_inner`
-  - `Más frío`: más lejos que `hz_outer`
+  - `Muy cerca`: más cerca que `hz_inner`
+  - `Muy lejos`: más lejos que `hz_outer`
   - `Desconocido`: falta `eff_distance`, `hz_inner` o `hz_outer`
 
 - **temp_habitability** — T-PHC (PHL @ UPR Arecibo), sobre `equilibrium_temp_k` convertida a °C (`K - 273.15`):
@@ -143,14 +143,14 @@ Columnas añadidas (además de las de `stg_planets`):
   - Referencia: https://phl.upr.edu/library/labnotes/a-thermal-planetary-habitability-classification-for-exoplanets
 
 - **planet_type** — familia por radio (exoplanet.eu), en radios terrestres:
-  - `Mercury-like`: ≤ 0.5 · `Mini-Earth`: 0.5–0.8 · `Earth-like`: 0.8–1.2 · `Super-Earth`: 1.2–1.75
+  - `Mercury-like`: <> 0.5 · `Mini-Earth`: 0.5–0.8 · `Earth-like`: 0.8–1.2 · `Super-Earth`: 1.2–1.75
   - `Transition`: 1.75–2.1 · `Sub-Neptune`: 2.1–4 · `Neptune-like`: 4–8 · `Jovian-like`: > 8
   - `Desconocido`: sin radio
   - Referencia: https://scholar.exoplanet.eu/spip.php?article291&lang=en
 
 - **spectral_type** — clasificación Morgan-Keenan por `star_temp_k`:
-  - `O`: > 30000 · `B`: 10000–30000 · `A`: 7500–10000 · `F`: 6000–7500
-  - `G`: 5200–6000 · `K`: 3700–5200 · `M`: ≤ 3700
+  - `O`: >= 30000 · `B`: 10000–30000 · `A`: 7500–10000 · `F`: 6000–7500
+  - `G`: 5200–6000 · `K`: 3700–5200 · `M`: ≤ 3700 . `Desconocido`: Sin temperatura
 
 - **discovery_era** — por `discovery_year`:
   - `Pre-Kepler`: < 2009 · `Era Kepler`: 2009–2017 · `Era TESS`: ≥ 2018 · `Desconocido`: sin año

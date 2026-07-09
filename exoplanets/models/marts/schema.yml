@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: mart_habitability
+    columns:
+    - name: habitability
+      tests:
+        - accepted_values:
+            arguments:
+              values: ['Muy cerca', 'Muy lejos', 'Zona habitable', 'Desconocido']
+    - name: temp_habitability
+      tests:
+        - accepted_values:
+            arguments:
+              values: ['hP - hypopsychroplanet', 'P - psychroplanet', 'M - mesoplanet', 'T - thermoplanet', 'hT - hyperthermoplanet', 'Desconocido']
+    - name: planet_type
+      tests:
+        - accepted_values:
+            arguments:
+              values: ['Mercury-like', 'Mini-Earth', 'Earth-like', 'Super-Earth', 'Transition', 'Sub-Neptune', 'Neptune-like', 'Jovian-like', 'Desconocido']
+    - name: spectral_type
+      tests:
+        - accepted_values:
+            arguments:
+              values: ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'Desconocido']
+    - name: discovery_era
+      tests:
+        - accepted_values:
+            arguments:
+              values: ['Pre-Kepler', 'Era Kepler', 'Era TESS', 'Desconocido']

@@ -14,19 +14,19 @@ def classify_planet(radius):
     # clasificación por radio (en radios terrestres) según exoplanet.eu
     if pd.isna(radius):
         return "Desconocido"
-    elif radius <= 0.5:
+    elif radius < 0.5:
         return "Mercury-like"
-    elif radius <= 0.8:
+    elif radius < 0.8:
         return "Mini-Earth"
-    elif radius <= 1.2:
+    elif radius < 1.2:
         return "Earth-like"
-    elif radius <= 1.75:
+    elif radius < 1.75:
         return "Super-Earth"
-    elif radius <= 2.1:
+    elif radius < 2.1:
         return "Transition"
-    elif radius <= 4:
+    elif radius < 4:
         return "Sub-Neptune"
-    elif radius <= 8:
+    elif radius < 8:
         return "Neptune-like"
     else:
         return "Jovian-like"
@@ -75,7 +75,7 @@ def transform(df):
         df["eff_distance"] < df["hz_inner"],   # más cerca que el límite interior
         df["eff_distance"] > df["hz_outer"],   # más lejos que el límite exterior
     ]
-    choices = ["Más caliente", "Más frío"]
+    choices = ["Muy cerca", "Muy lejos"]
     df["habitability"] = np.select(conditions, choices, default="Zona habitable")
 
     # si falta algún dato, no se puede clasificar
@@ -128,4 +128,4 @@ if __name__ == "__main__":
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
     df = transform(normalize())
-    df.info()
+    print(df.iloc[0])
