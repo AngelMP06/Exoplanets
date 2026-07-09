@@ -1,16 +1,15 @@
 import logging
-
-from duckdb import df
-from src.extract import get_data
 import sys
+
+from src.extract import get_data
+from src.load import load_to_s3
+
 from pathlib import Path
+
 
 # permite importar los módulos de src/ (extract, normalize, transform)
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from normalize import normalize
-from transform import transform
-from load import load_to_s3
 
 
 logger = logging.getLogger(__name__)
