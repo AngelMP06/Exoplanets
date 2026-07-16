@@ -10,14 +10,16 @@ Documentación del pipeline de datos por capas: **raw → staging → marts**.
 
 ## Raw
 
-### raw_ps
+### raw.planets
 
 Datos crudos de la API TAP de NASA Exoplanet Archive, tabla `pscomppars`
 (Planetary Systems Composite Parameters). Una fila por planeta confirmado.
-No se transforma nada: es la respuesta de `get_data()` (extract.py) volcada tal cual.
+No se transforma nada: es la respuesta de `get_data()` (extract.py) volcada tal cual
+a un parquet en S3, que dbt lee como source.
 
 - **Fuente:** https://exoplanetarchive.ipac.caltech.edu/TAP/sync
 - **Tabla origen:** `pscomppars`
+- **Source dbt:** `raw.planets` → `s3://exoplanetas-pipeline-datos/raw/planets.parquet`
 - **Grano:** un planeta por fila
 - **Docs columnas:** https://exoplanetarchive.ipac.caltech.edu/docs/API_PS_columns.html
 
@@ -89,10 +91,14 @@ casteados. Es un "uno a uno" con raw (misma granularidad, un planeta por fila).
 
 ## Marts
 
-### mart_habitability
+### mart_planets
 
 Tabla final lista para análisis. Hereda todas las columnas de `stg_planets` y
-añade las columnas calculadas y clasificaciones definidas en `validation.py`.
+añade las columnas calculadas y clasificaciones definidas en `mart_planets.sql`.
+Es la tabla base que consumen el resto de marts.
+
+Todos los rangos de las clasificaciones son semiabiertos: el límite inferior
+entra en la categoría y el superior no (`[inicio, fin)`).
 
 - **Origen:** `stg_planets`
 - **Grano:** un planeta por fila
@@ -138,19 +144,19 @@ Columnas añadidas (además de las de `stg_planets`):
   - `P - psychroplanet`: −50 a 0 °C
   - `M - mesoplanet`: 0 a 50 °C
   - `T - thermoplanet`: 50 a 100 °C
-  - `hT - hyperthermoplanet`: > 100 °C
+  - `hT - hyperthermoplanet`: ≥ 100 °C
   - `Desconocido`: sin temperatura
   - Referencia: https://phl.upr.edu/library/labnotes/a-thermal-planetary-habitability-classification-for-exoplanets
 
 - **planet_type** — familia por radio (exoplanet.eu), en radios terrestres:
-  - `Mercury-like`: <> 0.5 · `Mini-Earth`: 0.5–0.8 · `Earth-like`: 0.8–1.2 · `Super-Earth`: 1.2–1.75
+  - `Mercury-like`: < 0.5 · `Mini-Earth`: 0.5–0.8 · `Earth-like`: 0.8–1.2 · `Super-Earth`: 1.2–1.75
   - `Transition`: 1.75–2.1 · `Sub-Neptune`: 2.1–4 · `Neptune-like`: 4–8 · `Jovian-like`: > 8
   - `Desconocido`: sin radio
   - Referencia: https://scholar.exoplanet.eu/spip.php?article291&lang=en
 
 - **spectral_type** — clasificación Morgan-Keenan por `star_temp_k`:
   - `O`: >= 30000 · `B`: 10000–30000 · `A`: 7500–10000 · `F`: 6000–7500
-  - `G`: 5200–6000 · `K`: 3700–5200 · `M`: ≤ 3700 . `Desconocido`: Sin temperatura
+  - `G`: 5200–6000 · `K`: 3700–5200 · `M`: < 3700 · `Desconocido`: sin temperatura
 
 - **discovery_era** — por `discovery_year`:
   - `Pre-Kepler`: < 2009 · `Era Kepler`: 2009–2017 · `Era TESS`: ≥ 2018 · `Desconocido`: sin año

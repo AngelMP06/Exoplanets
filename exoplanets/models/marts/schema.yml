@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: mart_habitability
+  - name: mart_planets
     columns:
     - name: habitability
       tests:
@@ -28,3 +28,103 @@ models:
         - accepted_values:
             arguments:
               values: ['Pre-Kepler', 'Era Kepler', 'Era TESS', 'Desconocido']
+  - name: mart_size
+    columns:
+      - name: planet_name
+        tests:
+          - not_null
+      - name: planet_radius_earth
+        tests:
+          - not_null
+      - name: categoria
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['mas grande', 'mas pequeña', 'mas grande por sistema']
+  - name: mart_distance
+    columns:
+      - name: planet_name
+        tests:
+          - not_null
+      - name: distance_pc
+        tests:
+          - not_null
+      - name: categoria
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['mas_distante', 'menos_distante']
+  - name: mart_discovery_distribution
+    columns:
+      - name: clasificacion
+        tests:
+          - not_null
+      - name: conteo
+        tests:
+          - not_null
+      - name: categoria
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['por_metodo', 'por_año', 'tendencia_acumulada', 'por_discovery_era']
+
+  - name: mart_system
+    columns:
+      - name: star_name
+        tests:
+          - not_null
+      - name: valor
+        tests:
+          - not_null
+      - name: categoria
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['top_planetas_por_sistema', 'top_lunas_por_sistema']
+
+  - name: mart_system_distribution
+    columns:
+      - name: clasificacion
+        tests:
+          - not_null
+      - name: conteo
+        tests:
+          - not_null
+      - name: categoria
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['distribucion_num_planetas', 'distribucion_num_lunas']
+  - name: mart_habitability
+    columns:
+      - name: star_name
+        tests:
+          - not_null
+      - name: planetas_habitables
+        tests:
+          - not_null
+
+  - name: mart_habitability_distribution
+    columns:
+      - name: clasificacion
+        tests:
+          - not_null
+      - name: conteo
+        tests:
+          - not_null
+      - name: categoria
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['por_habitability', 'por_temp_habitability']
+  - name: mart_habitability_by_spectral_type
+    columns:
+      - name: spectral_type
+        tests:
+          - not_null
+      - name: habitability
+        tests:
+          - not_null
+      - name: conteo
+        tests:
+          - not_null
