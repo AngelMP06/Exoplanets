@@ -6,7 +6,7 @@ on:
   workflow_dispatch:       # para correrlo manualmente desde GitHub
 
 jobs:
-  run-pipeline:
+  extract:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,3 +28,46 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_BUCKET_NAME: ${{ secrets.AWS_BUCKET_NAME }}
         run: python main.py
+
+  transform:
+    needs: extract
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt dependencies
+        working-directory: exoplanets
+        run: pip install -r requirements-dbt.txt
+
+      - name: Generate profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat << EOF > ~/.dbt/profiles.yml
+          exoplanets:
+            target: dev
+            outputs:
+              dev:
+                type: duckdb
+                path: exoplanets.duckdb
+                extensions:
+                  - httpfs
+                settings:
+                  s3_region: "${{ secrets.AWS_REGION }}"
+                  s3_access_key_id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+                  s3_secret_access_key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          EOF
+
+      - name: Run dbt
+        working-directory: exoplanets
+        run: dbt run
+
+      - name: Run dbt tests
+        working-directory: exoplanets
+        run: dbt test
