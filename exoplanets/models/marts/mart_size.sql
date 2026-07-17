@@ -2,16 +2,16 @@ with biggest_planet as (
     
 select planet_name, planet_radius_earth, star_name,
 ROW_NUMBER() OVER (PARTITION BY star_name ORDER BY planet_radius_earth desc) as rn
-from mart_planets
+from {{ ref('mart_planets') }}
 )
 
 (select planet_name, planet_radius_earth, star_name, 'mas grande' as categoria
-from mart_planets order by planet_radius_earth desc limit 10)
+from {{ ref('mart_planets') }} order by planet_radius_earth desc limit 10)
 
 UNION ALL
 
 (select planet_name, planet_radius_earth, star_name, 'mas pequeña' as categoria
-from mart_planets order by planet_radius_earth asc limit 10)
+from {{ ref('mart_planets') }} order by planet_radius_earth asc limit 10)
 
 union all   
 
