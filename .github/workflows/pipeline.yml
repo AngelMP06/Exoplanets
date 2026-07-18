@@ -71,3 +71,12 @@ jobs:
       - name: Run dbt tests
         working-directory: exoplanets
         run: dbt test
+
+      - name: Upload duckdb to S3
+        working-directory: exoplanets
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws s3 cp exoplanets.duckdb s3://${{ secrets.AWS_BUCKET_NAME }}/warehouse/exoplanets.duckdb
