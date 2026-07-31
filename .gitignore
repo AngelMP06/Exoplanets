@@ -1,5 +1,7 @@
 .venv
 .venv-dbt
+.venv-api/
+exoplanets.duckdb
 .env
 
 # Claude files
