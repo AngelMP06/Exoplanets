@@ -39,3 +39,8 @@
 
 - Al inicio de mi API uso lifespan para verificar que el archivo se descargue correctamente, si no lo hace, dejo que el error se propague en mi workflow y lanze la exception.
 - Crear los diccionarios para mandarlos en la API es más fácil con pandas, pero no voy a instalar una librería tan grande solo para una acción. 
+
+## 2026-08-03
+### Revisé
+
+- Ya lo había decidido pero lo escribo, al subir la data transformada a S3, hago test, si la data no cumple los test, entonces ese deployment no se termina y los datos servidos serán de antiguos deployments, si fallan me llega al correo, pero en general si algo falla entonces se tendrá data antigua en lugar de data corrupta.

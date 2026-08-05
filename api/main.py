@@ -9,9 +9,10 @@ from botocore.exceptions import ClientError
 
 load_dotenv()
 
-DUCKDB_LOCAL_PATH = "exoplanets.duckdb"
+DUCKDB_LOCAL_PATH = os.getenv("DUCKDB_PATH", "exoplanets.duckdb")
 S3_BUCKET = os.getenv("AWS_BUCKET_NAME")
 S3_KEY = "warehouse/exoplanets.duckdb"
+SKIP_S3_DOWNLOAD = os.getenv("SKIP_S3_DOWNLOAD")
 
 db_ready = False  # bandera simple para que /health sepa si cargó bien
 
@@ -28,11 +29,13 @@ async def lifespan(app: FastAPI):
     # --- código que corría antes en download_database(), va acá arriba del yield ---
     global db_ready
 
-    # TODO 1: crear el cliente s3 (mismo patrón que en test_read_only.py)
-    s3 = get_s3_client()
+    if not SKIP_S3_DOWNLOAD:
+    
+        # TODO 1: crear el cliente s3 (mismo patrón que en test_read_only.py)
+        s3 = get_s3_client()
 
-    # TODO 2: descargar S3_KEY a DUCKDB_LOCAL_PATH
-    s3.download_file(S3_BUCKET, S3_KEY, DUCKDB_LOCAL_PATH)
+        # TODO 2: descargar S3_KEY a DUCKDB_LOCAL_PATH
+        s3.download_file(S3_BUCKET, S3_KEY, DUCKDB_LOCAL_PATH)
 
     # TODO 3: si falla, ¿qué hacés? (pensá en "fallar ruidoso", no capturar y seguir)
     # No hacer nada, dejar que el fallo se propague, de todas formas si falla aca, quiero que todo se detenga

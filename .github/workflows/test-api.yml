@@ -1,0 +1,35 @@
+name: Test API
+
+on:
+    push:
+        branches: [main]
+        # El workflow solo correrá si los cambios afectan a la carpeta api, para ahorrar minutos de CI
+        # al cambiar otras partes del proyecto que no afectan a la API. 
+        paths:
+            - 'api/**'
+    pull_request:
+        paths:
+            - 'api/**'
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.11'
+
+            - name: Install dependencies
+              run: pip install -r api/requirements.txt
+            
+            - name: Correr tests
+              working-directory: api
+              env:
+                SKIP_S3_DOWNLOAD: "true"
+                DUCKDB_PATH: tests/fixtures/test_exoplanets.duckdb
+              run: python -m pytest tests/test_main.py -v
