@@ -3,6 +3,7 @@
 .venv-api/
 exoplanets.duckdb
 .env
+.vscode/
 
 # Claude files
 CLAUDE.md
@@ -10,3 +11,4 @@ CLAUDE.md
 .claudeignore
 
 __pycache__/
+.ipynb_checkpoints
