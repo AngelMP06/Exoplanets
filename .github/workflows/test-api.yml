@@ -4,7 +4,7 @@ on:
     push:
         branches: [main]
         # El workflow solo correrá si los cambios afectan a la carpeta api, para ahorrar minutos de CI
-        # al cambiar otras partes del proyecto que no afectan a la API. 
+        # al cambiar otras partes del proyecto que no afectan a la API
         paths:
             - 'api/**'
     pull_request:

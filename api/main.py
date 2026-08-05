@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     # No hacer nada, dejar que el fallo se propague, de todas formas si falla aca, quiero que todo se detenga
 
 
-    # TODO 4: si sale bien, marcar db_ready = True
+    # TODO 4: si sale bien, marcar db_ready = True y loguear un mensaje de que la base de datos se cargó correctamente
     db_ready=True
     print("Base de datos cargada completamente")
 
