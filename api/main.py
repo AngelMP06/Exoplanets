@@ -37,7 +37,6 @@ async def lifespan(app: FastAPI):
         # TODO 2: descargar S3_KEY a DUCKDB_LOCAL_PATH
         s3.download_file(S3_BUCKET, S3_KEY, DUCKDB_LOCAL_PATH)
 
-    # TODO 3: si falla, ¿qué hacés? (pensá en "fallar ruidoso", no capturar y seguir)
     # No hacer nada, dejar que el fallo se propague, de todas formas si falla aca, quiero que todo se detenga
 
 
@@ -45,9 +44,7 @@ async def lifespan(app: FastAPI):
     db_ready=True
     print("Base de datos cargada completamente")
 
-    yield  # la API corre acá — todo lo de abajo del yield sería código de "shutdown", no lo necesitás todavía
-
-    # (nada por ahora — si algún día necesitás limpiar algo al apagar la API, va acá)
+    yield 
 
 
 app = FastAPI(lifespan=lifespan)
@@ -56,7 +53,10 @@ app = FastAPI(lifespan=lifespan)
 def get_connection():
     # TODO 5: abrir una conexión NUEVA de solo lectura cada vez que se llama esta función
     con = duckdb.connect(DUCKDB_LOCAL_PATH, read_only=True)
-    return con
+    try:
+        yield con
+    finally:
+        con.close()
 
 # Helper para ejecutar la query en cada endpoint
 def ejecutar_query(con, query, params = None):

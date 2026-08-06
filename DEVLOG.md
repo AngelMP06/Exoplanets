@@ -44,3 +44,17 @@
 ### Revisé
 
 - Ya lo había decidido pero lo escribo, al subir la data transformada a S3, hago test, si la data no cumple los test, entonces ese deployment no se termina y los datos servidos serán de antiguos deployments, si fallan me llega al correo, pero en general si algo falla entonces se tendrá data antigua en lugar de data corrupta.
+
+## 2026-08-05
+### Hice
+
+- Realizé los test para que corran cada vez que la carpeta api/ sufre cambios, estos test comprueban que la data enviada por la API sea correcta, ahora que tengo todos los tests listos, queda subirlo a render
+
+## 2026-08-06
+### Decidí
+
+- Render en vez de un entorno serverless (ej. Cloudflare Workers) para el backend: mi API usa un proceso persistente (lifespan + conexión DuckDB reutilizada), y Workers no soporta paquetes con binarios nativos como duckdb.
+
+- Backend propio (FastAPI) en vez de un servicio gestionado tipo Supabase: el objetivo del proyecto es demostrar que puedo construir y desplegar esa capa yo mismo, no delegarla a un servicio de terceros.
+
+- FreeTier de Render (no el plan de pago) para hostear: mi .duckdb pesa 9MB así que la RAM del free tier (512 MB) es más que suficiente. El trade-off es el spin-down tras 15 min de inactividad - el primer request después de eso tarda 30-60 s en responder (el contenedor entero tiene que levantar, no solo la descarga del archivo, que es rápida por el tamaño chico). Aceptable para portafolio de bajo tráfico; una opción futura es pagar el plan Starter ($7/mes) para eliminar el spin-down.
