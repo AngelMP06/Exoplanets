@@ -1,6 +1,7 @@
 .venv
 .venv-dbt
 .venv-api/
+.venv-streamlit/
 exoplanets.duckdb
 .env
 .vscode/

@@ -58,3 +58,8 @@
 - Backend propio (FastAPI) en vez de un servicio gestionado tipo Supabase: el objetivo del proyecto es demostrar que puedo construir y desplegar esa capa yo mismo, no delegarla a un servicio de terceros.
 
 - FreeTier de Render (no el plan de pago) para hostear: mi .duckdb pesa 9MB así que la RAM del free tier (512 MB) es más que suficiente. El trade-off es el spin-down tras 15 min de inactividad - el primer request después de eso tarda 30-60 s en responder (el contenedor entero tiene que levantar, no solo la descarga del archivo, que es rápida por el tamaño chico). Aceptable para portafolio de bajo tráfico; una opción futura es pagar el plan Starter ($7/mes) para eliminar el spin-down.
+
+## 2026-08-09
+### Decidí
+
+- Voy a crear el siguiente diseño para mi frontend, todo estará en una sola página scrolleable, las 9 marts se agruparán según categoría (habitability, discovery, size, distance, system) y se mostrará cada categoría con su ranking, gráfica de distribución y una descripción que se obtuvo del EDA.
