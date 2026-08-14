@@ -63,3 +63,7 @@
 ### Decidí
 
 - Voy a crear el siguiente diseño para mi frontend, todo estará en una sola página scrolleable, las 9 marts se agruparán según categoría (habitability, discovery, size, distance, system) y se mostrará cada categoría con su ranking, gráfica de distribución y una descripción que se obtuvo del EDA.
+
+## 2026-08-13
+
+- Decidí que voy a crear un mart extra, llamado position el cual tendra RA, Decl, distance_pc, planet_name y star_name  este me servirá para 2 cosas, una para hacer la distribución de distance_pc y otra para crear un mapa en 3d de las posiciones de todos los planetas.

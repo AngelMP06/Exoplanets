@@ -128,3 +128,20 @@ models:
       - name: conteo
         tests:
           - not_null
+  - name: mart_position
+    columns:
+      - name: ra_deg
+        tests:
+          - not_null
+      - name: dec_deg
+        tests:
+          - not_null
+      - name: distance_pc
+        tests:
+          - not_null
+      - name: planet_name
+        tests:
+          - not_null
+      - name: star_name
+        tests:
+          - not_null
