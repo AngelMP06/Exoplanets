@@ -90,6 +90,10 @@ def get_size(categoria : str, con = Depends(get_connection)):
 def get_habitability_by_spectral_type(con = Depends(get_connection)):
     return ejecutar_query(con, "SELECT * FROM mart_habitability_by_spectral_type")
 
+@app.get("/position")
+def get_system_distribution(con = Depends(get_connection)):
+    return ejecutar_query(con, "Select * FROM mart_position")
+
 @app.get("/distance")
 def get_distance(categoria : str, con = Depends(get_connection)):
     return ejecutar_query(con, "SELECT * FROM mart_distance WHERE categoria = ?", [categoria])

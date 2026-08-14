@@ -7,7 +7,8 @@ fixture = duckdb.connect("tests/fixtures/test_exoplanets.duckdb")
 fixture.execute("ATTACH 'exoplanets.duckdb' AS real (READ_ONLY)")
 
 marts_sin_categoria = ["mart_habitability",
-                        "mart_habitability_by_spectral_type"]
+                        "mart_habitability_by_spectral_type",
+                        "mart_position"]
 
 marts_con_categoria = ["mart_size",
                         "mart_distance",
