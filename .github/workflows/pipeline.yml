@@ -39,7 +39,7 @@ jobs:
         working-directory: exoplanets
         run: pip install -r requirements-dbt.txt
       - name: Generate profiles.yml
-        run:
+        run: |
           mkdir -p ~/.dbt
           cat << EOF > ~/.dbt/profiles.yml
           exoplanets:
