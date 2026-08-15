@@ -1,5 +1,7 @@
 import streamlit as st
 import os
+import base64
+from contextlib import contextmanager
 import requests
 import numpy as np
 import pandas as pd
@@ -11,6 +13,100 @@ from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(layout="wide", page_title="Exoplanetas", page_icon="🪐")
+
+# Ancho máximo de 600px para tablas y un tope de 700px para la "columna de
+# lectura" (subtítulo + texto + gráfica/tabla de cada subsección) — no anchos
+# fijos, topes: en pantallas angostas se achican solas junto con su
+# contenedor.
+st.markdown(
+    """
+    <style>
+    div[data-testid="stTable"] {
+        max-width: 600px;
+        margin: 0 auto 1rem auto;
+    }
+    div[data-testid="stTable"] th {
+        text-align: center !important;
+    }
+    div[data-testid="stTable"] td {
+        text-align: center !important;
+    }
+    /* Columna de lectura compartida por subtítulo, texto y gráfica/tabla de
+       una subsección: mismo margen izquierdo y mismo ancho máximo (700px)
+       para los tres, así una gráfica de 600px queda centrada en relación al
+       texto de arriba, no en relación a toda la página. */
+    div[class*="st-key-columna-lectura-"] {
+        max-width: 700px;
+    }
+    div[class*="st-key-tarjeta-"] {
+        max-width: 600px;
+        margin: 0.5rem auto 1.5rem auto;
+        padding: 1.25rem;
+        border-radius: 12px;
+        background-color: #eaf1fb;
+        box-sizing: border-box;
+    }
+    /* Texto narrativo del artículo: una serif en vez del sans por defecto,
+       con más interlineado, para que se sienta más "artículo". */
+    div[class*="st-key-parrafo-"] {
+        font-family: Georgia, "Times New Roman", Times, serif;
+        font-size: 1.05rem;
+        line-height: 1.7;
+    }
+    h2 {
+        padding: 10px 0;
+    }
+    /* Separación extra entre el banner y el primer título de sección. */
+    h2:first-of-type {
+        padding-top: 3rem;
+    }
+    /* El padding horizontal por defecto de Streamlit en el contenedor
+       principal es justo lo que desalineaba el banner de ancho completo
+       (ver más abajo) — se pone en 0 acá; toda la sangría del artículo la
+       dan las propias columnas de lectura, no este padding. */
+    .block-container {
+        padding-left: 0rem !important;
+        padding-right: 0rem !important;
+    }
+    /* Tabla de contenidos fija: position:fixed no depende de la altura de
+       ningún contenedor padre (a diferencia de position:sticky, que en dos
+       intentos no logró "engancharse" de forma confiable dentro de las
+       columnas de Streamlit) — por eso se ve siempre en el mismo lugar de
+       la pantalla, incluida la primera pantalla con el banner. */
+    .toc-fija {
+        position: fixed;
+        top: 5rem;
+        right: 2rem;
+        width: 276px;
+        background-color: #eaf1fb;
+        border-radius: 12px;
+        padding: 1.5rem 1.75rem;
+        box-shadow: 0 2px 10px rgba(11, 11, 11, 0.12);
+        z-index: 999;
+    }
+    .toc-fija .toc-titulo {
+        font-weight: 700;
+        margin-bottom: 0.9rem;
+        font-size: 1.4rem;
+        color: #0b0b0b;
+    }
+    .toc-fija a {
+        display: block;
+        padding: 0.5rem 0;
+        color: #184f95;
+        text-decoration: none;
+        font-size: 1.15rem;
+    }
+    .toc-fija a:hover {
+        text-decoration: underline;
+    }
+    @media (max-width: 900px) {
+        .toc-fija { display: none; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 API_BASE_URL = os.getenv("URL")
 
@@ -79,6 +175,15 @@ RA_POLO_GALACTICO = np.radians(192.859508)
 DEC_POLO_GALACTICO = np.radians(27.128336)
 
 
+@st.cache_resource
+def cargar_banner_b64():
+    """PNG generado localmente (matplotlib, ver scratchpad/generate_banner.py)
+    para evitar cualquier duda de derechos de autor sobre imágenes de terceros."""
+    ruta = os.path.join(os.path.dirname(__file__), "assets", "banner_exoplanetas_v2.png")
+    with open(ruta, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
 def hay_datos(df, mensaje="Sin datos para esta selección."):
     if df.empty:
         st.info(mensaje)
@@ -86,7 +191,78 @@ def hay_datos(df, mensaje="Sin datos para esta selección."):
     return True
 
 
-def grafico_distribucion(df, orden=None, etiquetas=None, altura=380):
+# Sangría compartida por el subtítulo, el texto y las gráficas de una
+# subsección: los tres arrancan en el mismo margen izquierdo, distinto (más
+# adentro) del margen del título de sección (h2).
+INDENTACION_SUBSECCION = [1, 24]
+
+_contador_columna = 0
+
+
+@contextmanager
+def _columna_lectura():
+    """Columna compartida por subtítulo/texto/gráfica de una subsección:
+    misma sangría y mismo ancho máximo de lectura (700px, vía CSS en
+    st-key-columna-lectura-N), para que todo quede alineado entre sí."""
+    global _contador_columna
+    _contador_columna += 1
+    _, col = st.columns(INDENTACION_SUBSECCION)
+    with col:
+        with st.container(key=f"columna-lectura-{_contador_columna}"):
+            yield
+
+
+def subseccion(titulo):
+    """Subtítulo de una subsección, con sangría respecto al título de la
+    sección (h2)."""
+    with _columna_lectura():
+        st.subheader(titulo)
+
+
+def parrafo(texto):
+    """Texto narrativo, a la misma sangría y ancho que su subtítulo."""
+    with _columna_lectura():
+        st.markdown(texto)
+
+
+@contextmanager
+def tarjeta_grafico(key):
+    """Gráfica (y su selectbox, si tiene) en una tarjeta con fondo propio,
+    centrada dentro de la misma columna de lectura que el texto — por eso
+    queda alineada con el texto, no con el ancho total de la página."""
+    with _columna_lectura():
+        with st.container(key=f"tarjeta-{key}"):
+            yield
+
+
+def tabla_estilizada(df):
+    """Estilo compartido por las tablas de ranking: encabezado azulado,
+    filas intercaladas y texto centrado. Usa pandas Styler + st.table (HTML
+    real) en vez de st.dataframe, porque st.dataframe se dibuja en canvas y
+    no admite estas propiedades CSS."""
+    df = df.reset_index(drop=True)
+    colores_fila = ["#ffffff" if i % 2 == 0 else "#f2f6fc" for i in df.index]
+    return (
+        df.style
+        .hide(axis="index")
+        .set_table_styles([
+            {"selector": "th", "props": [
+                ("background-color", "#cfe3fb"),
+                ("color", "#0b0b0b"),
+                ("text-align", "center"),
+                ("font-weight", "600"),
+                ("padding", "0.4rem 0.6rem"),
+            ]},
+            {"selector": "td", "props": [
+                ("text-align", "center"),
+                ("padding", "0.35rem 0.6rem"),
+            ]},
+        ])
+        .apply(lambda _: [f"background-color: {c}" for c in colores_fila], axis=0)
+    )
+
+
+def grafico_distribucion(df, orden=None, etiquetas=None, altura=400):
     """Barra vertical para el patrón clasificacion / conteo."""
     fig = px.bar(
         df,
@@ -189,260 +365,304 @@ def grafico_mapa_3d(df, altura=550):
 # Encabezado
 # ============================================
 
-st.title("Exoplanetas")
-
 df_position = pd.DataFrame(fetch("/position"))
 num_exoplanetas = len(df_position)
 
-col_desc, col_metrica = st.columns([3, 1])
+st.markdown(
+    f"""
+    <style>
+    .block-container {{ padding-top: 0rem !important; }}
+    .banner-exoplanetas {{
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+        width: 100vw;
+        min-height: 100vh;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+        color: #ffffff;
+        background-image:
+            linear-gradient(180deg, rgba(6,6,13,0.35) 0%, rgba(6,6,13,0.8) 100%),
+            url("data:image/png;base64,{cargar_banner_b64()}");
+        background-size: cover;
+        background-position: center;
+    }}
+    .banner-exoplanetas h1 {{
+        font-size: 3.5rem;
+        margin: 0 0 1rem 0;
+    }}
+    .banner-exoplanetas p {{
+        max-width: 640px;
+        font-size: 1.15rem;
+        opacity: 0.92;
+    }}
+    .banner-exoplanetas .banner-metrica {{
+        margin-top: 1.5rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }}
+    </style>
+    <div class="banner-exoplanetas">
+        <h1>Exoplanetas</h1>
+        <p>
+            Planetas que orbitan una estrella distinta al Sol. Todavía son
+            pocos los confirmados frente a las ~100 mil estrellas de la
+            galaxia — probablemente queden muchísimos más por descubrir.
+        </p>
+        <div class="banner-metrica">🪐 {num_exoplanetas:,} exoplanetas confirmados</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-with col_desc:
-    st.caption(
-        "Planetas que orbitan una estrella distinta al Sol. Todavía son pocos "
-        "los confirmados frente a las ~100 mil estrellas de la galaxia — "
-        "probablemente queden muchísimos más por descubrir."
-    )
-
-with col_metrica:
-    st.metric("Exoplanetas confirmados", f"{num_exoplanetas:,}")
-
-tab_descubrimiento, tab_distancia, tab_tamano, tab_sistema, tab_habitabilidad, tab_mapa, tab_conclusion = st.tabs(
-    [
-        "📡 Descubrimiento", "📏 Distancia", "🪐 Tamaño", "☀️ Sistema",
-        "🌍 Habitabilidad", "🗺️ Mapa estelar", "📝 Conclusión",
-    ]
+st.markdown(
+    """
+    <div class="toc-fija">
+        <div class="toc-titulo">Contenido</div>
+        <a href="#descubrimiento">1. Descubrimiento</a>
+        <a href="#distancia">2. Distancia</a>
+        <a href="#tamano">3. Tamaño</a>
+        <a href="#sistema">4. Sistema</a>
+        <a href="#habitabilidad">5. Habitabilidad</a>
+        <a href="#mapa-estelar">6. Mapa estelar</a>
+        <a href="#conclusion">7. Conclusión</a>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ============================================
 # Descubrimiento
 # ============================================
 
-with tab_descubrimiento:
-    col_tiempo, col_metodo = st.columns(2)
+st.header("1. Descubrimiento", anchor="descubrimiento")
 
-    with col_tiempo:
-        st.caption(
-            "Los primeros exoplanetas se descubrieron en 1992. El salto entre "
-            "2014 y 2016 no es un pico real de detecciones: son planetas "
-            "hallados antes y confirmados después, gracias al telescopio "
-            "Kepler de la NASA."
-        )
-        with st.expander("Más contexto"):
-            st.markdown(
-                "Los primeros 2 exoplanetas fueron descubiertos en 1992, dichos "
-                "planetas orbitaban un púlsar llamado Lich. Este fue el inicio "
-                "de la búsqueda de más exoplanetas en nuestra galaxia.\n\n"
-                "Vemos que entre los años 2014 y 2016 se hicieron el "
-                "descubrimiento de varios exoplanetas, sin embargo, no es que "
-                "esos exoplanetas se hayan detectado en esos años, se "
-                "detectaron en años anteriores, pero tuvieron que esperar "
-                "hasta esos años para, mediante estudios científicos, "
-                "confirmar su existencia.\n\n"
-                "Fue gracias al telescopio Kepler de la NASA, que publicó "
-                "enormes lotes de datos espaciales acumulados e introdujo "
-                "métodos avanzados de verificación estadística que "
-                "confirmaron miles de candidatos a planetas a la vez, por eso "
-                "tiene la mayor cantidad de descubrimientos."
+subseccion("Cuándo se descubrieron")
+
+parrafo(
+    "Los primeros exoplanetas se descubrieron en 1992. El salto entre "
+    "2014 y 2016 no es un pico real de detecciones: son planetas "
+    "hallados antes y confirmados después, gracias al telescopio "
+    "Kepler de la NASA.\n\n"
+    "Los primeros 2 exoplanetas fueron descubiertos en 1992, dichos "
+    "planetas orbitaban un púlsar llamado Lich. Este fue el inicio "
+    "de la búsqueda de más exoplanetas en nuestra galaxia.\n\n"
+    "Vemos que entre los años 2014 y 2016 se hicieron el "
+    "descubrimiento de varios exoplanetas, sin embargo, no es que "
+    "esos exoplanetas se hayan detectado en esos años, se "
+    "detectaron en años anteriores, pero tuvieron que esperar "
+    "hasta esos años para, mediante estudios científicos, "
+    "confirmar su existencia.\n\n"
+    "Fue gracias al telescopio Kepler de la NASA, que publicó "
+    "enormes lotes de datos espaciales acumulados e introdujo "
+    "métodos avanzados de verificación estadística que "
+    "confirmaron miles de candidatos a planetas a la vez, por eso "
+    "tiene la mayor cantidad de descubrimientos."
+)
+
+with tarjeta_grafico("descubrimiento-tiempo"):
+    categoria_descubrimiento = st.selectbox(
+        "Distribución por descubrimiento",
+        ["por_año", "tendencia_acumulada", "por_discovery_era"],
+        key="dist_descubrimiento",
+    )
+
+    data_descubrimiento = fetch(
+        "/discovery_distribution", params={"categoria": categoria_descubrimiento}
+    )
+    df_descubrimiento = pd.DataFrame(data_descubrimiento)
+
+    if hay_datos(df_descubrimiento):
+        df_descubrimiento = df_descubrimiento.drop(columns=["categoria"])
+
+        if categoria_descubrimiento == "tendencia_acumulada":
+            # `conteo` ya viene acumulado desde el mart: es una curva, no barras.
+            df_descubrimiento = df_descubrimiento.sort_values("clasificacion")
+            fig_descubrimiento = px.line(
+                df_descubrimiento,
+                x="clasificacion",
+                y="conteo",
+                markers=True,
+                labels={"clasificacion": "Año", "conteo": "Total acumulado"},
+            )
+            fig_descubrimiento.update_traces(line_color=COLOR_SERIE, line_width=2)
+            fig_descubrimiento.update_layout(height=400, margin=dict(l=0, r=0, t=10, b=0))
+        elif categoria_descubrimiento == "por_año":
+            df_descubrimiento = df_descubrimiento.sort_values("clasificacion")
+            fig_descubrimiento = grafico_distribucion(
+                df_descubrimiento,
+                orden=list(df_descubrimiento["clasificacion"]),
+                etiquetas={"clasificacion": "Año", "conteo": "Nº de planetas"},
+            )
+        else:  # por_discovery_era
+            fig_descubrimiento = grafico_distribucion(
+                df_descubrimiento,
+                orden=list(df_descubrimiento["clasificacion"]),
+                etiquetas={"clasificacion": "Era", "conteo": "Nº de planetas"},
             )
 
-        categoria_descubrimiento = st.selectbox(
-            "Distribución por descubrimiento",
-            ["por_año", "tendencia_acumulada", "por_discovery_era"],
-            key="dist_descubrimiento",
+        st.plotly_chart(fig_descubrimiento, use_container_width=True)
+
+        if categoria_descubrimiento == "por_discovery_era":
+            st.caption(RANGO_DISCOVERY_ERA)
+
+subseccion("Cómo se descubrieron")
+
+parrafo(
+    "El método de tránsito (observar cuándo cae el brillo de una "
+    "estrella) es el que más exoplanetas ha detectado, seguido de la "
+    "velocidad radial y el microlente gravitacional.\n\n"
+    "Indiscutiblemente, el mejor método para detectar exoplanetas "
+    "es el transitorio, el cual consiste en observar el valor de "
+    "la luminosidad de una estrella para ver si es que disminuye "
+    "debido a que un planeta se ha puesto entre dicha estrella y "
+    "el telescopio que la observa.\n\n"
+    "El segundo método que descubrió más exoplanetas es el de la "
+    "velocidad radial, este detecta el \"bamboleo\" periódico de "
+    "una estrella debido a que está siendo afectada por la "
+    "gravedad de un planeta que la orbita, ya que ambos orbitan "
+    "un centro de gravedad común.\n\n"
+    "El tercer método es de microlente gravitacional, este "
+    "consiste en detectar cuando la gravedad de un planeta que "
+    "pasa frente a una estrella y curva su luz, esto añade un "
+    "pico de luz de extra brillo que permite medir su masa y "
+    "posición. Este método es utilizado para detectar planetas "
+    "lejanos que otros métodos no pueden detectar."
+)
+
+with tarjeta_grafico("descubrimiento-metodo"):
+    data_metodo = fetch("/discovery_distribution", params={"categoria": "por_metodo"})
+    df_metodo = pd.DataFrame(data_metodo)
+
+    if hay_datos(df_metodo):
+        df_metodo = df_metodo.drop(columns=["categoria"]).sort_values(
+            "conteo", ascending=False
         )
-
-        data_descubrimiento = fetch(
-            "/discovery_distribution", params={"categoria": categoria_descubrimiento}
+        fig_metodo = grafico_distribucion(
+            df_metodo,
+            orden=list(df_metodo["clasificacion"]),
+            etiquetas={"clasificacion": "Método", "conteo": "Nº de planetas"},
         )
-        df_descubrimiento = pd.DataFrame(data_descubrimiento)
-
-        if hay_datos(df_descubrimiento):
-            df_descubrimiento = df_descubrimiento.drop(columns=["categoria"])
-
-            if categoria_descubrimiento == "tendencia_acumulada":
-                # `conteo` ya viene acumulado desde el mart: es una curva, no barras.
-                df_descubrimiento = df_descubrimiento.sort_values("clasificacion")
-                fig_descubrimiento = px.line(
-                    df_descubrimiento,
-                    x="clasificacion",
-                    y="conteo",
-                    markers=True,
-                    labels={"clasificacion": "Año", "conteo": "Total acumulado"},
-                )
-                fig_descubrimiento.update_traces(line_color=COLOR_SERIE, line_width=2)
-                fig_descubrimiento.update_layout(height=380, margin=dict(l=0, r=0, t=10, b=0))
-            elif categoria_descubrimiento == "por_año":
-                df_descubrimiento = df_descubrimiento.sort_values("clasificacion")
-                fig_descubrimiento = grafico_distribucion(
-                    df_descubrimiento,
-                    orden=list(df_descubrimiento["clasificacion"]),
-                    etiquetas={"clasificacion": "Año", "conteo": "Nº de planetas"},
-                )
-            else:  # por_discovery_era
-                fig_descubrimiento = grafico_distribucion(
-                    df_descubrimiento,
-                    orden=list(df_descubrimiento["clasificacion"]),
-                    etiquetas={"clasificacion": "Era", "conteo": "Nº de planetas"},
-                )
-
-            st.plotly_chart(fig_descubrimiento, use_container_width=True)
-
-            if categoria_descubrimiento == "por_discovery_era":
-                st.caption(RANGO_DISCOVERY_ERA)
-
-    with col_metodo:
-        st.caption(
-            "El método de tránsito (observar cuándo cae el brillo de una "
-            "estrella) es el que más exoplanetas ha detectado, seguido de la "
-            "velocidad radial y el microlente gravitacional."
-        )
-        with st.expander("Más contexto"):
-            st.markdown(
-                "Indiscutiblemente, el mejor método para detectar exoplanetas "
-                "es el transitorio, el cual consiste en observar el valor de "
-                "la luminosidad de una estrella para ver si es que disminuye "
-                "debido a que un planeta se ha puesto entre dicha estrella y "
-                "el telescopio que la observa.\n\n"
-                "El segundo método que descubrió más exoplanetas es el de la "
-                "velocidad radial, este detecta el \"bamboleo\" periódico de "
-                "una estrella debido a que está siendo afectada por la "
-                "gravedad de un planeta que la orbita, ya que ambos orbitan "
-                "un centro de gravedad común.\n\n"
-                "El tercer método es de microlente gravitacional, este "
-                "consiste en detectar cuando la gravedad de un planeta que "
-                "pasa frente a una estrella y curva su luz, esto añade un "
-                "pico de luz de extra brillo que permite medir su masa y "
-                "posición. Este método es utilizado para detectar planetas "
-                "lejanos que otros métodos no pueden detectar."
-            )
-
-        data_metodo = fetch("/discovery_distribution", params={"categoria": "por_metodo"})
-        df_metodo = pd.DataFrame(data_metodo)
-
-        if hay_datos(df_metodo):
-            df_metodo = df_metodo.drop(columns=["categoria"]).sort_values(
-                "conteo", ascending=False
-            )
-            fig_metodo = grafico_distribucion(
-                df_metodo,
-                orden=list(df_metodo["clasificacion"]),
-                etiquetas={"clasificacion": "Método", "conteo": "Nº de planetas"},
-            )
-            st.plotly_chart(fig_metodo, use_container_width=True)
+        st.plotly_chart(fig_metodo, use_container_width=True)
 
 # ============================================
 # Distancia
 # ============================================
 
-with tab_distancia:
-    col_ranking_distancia, col_dist_distancia = st.columns(2)
+st.header("2. Distancia", anchor="distancia")
 
-    with col_ranking_distancia:
-        st.caption(
-            "El planeta más distante confirmado está a 8500 pc (27 722 años "
-            "luz) — el límite actual de lo que podemos ver. El más cercano "
-            "está a 1.3 pc (4.2 años luz), orbitando Próxima Centauri."
-        )
+subseccion("Los extremos")
 
-        data_mas_distante = fetch("/distance", params={"categoria": "mas_distante"})
-        df_mas_distante = pd.DataFrame(data_mas_distante)
-        data_menos_distante = fetch("/distance", params={"categoria": "menos_distante"})
-        df_menos_distante = pd.DataFrame(data_menos_distante)
+parrafo(
+    "El planeta más distante confirmado está a 8500 pc (27 722 años "
+    "luz) — el límite actual de lo que podemos ver. El más cercano "
+    "está a 1.3 pc (4.2 años luz), orbitando Próxima Centauri."
+)
 
-        col_mas_distante, col_menos_distante = st.columns(2)
+data_mas_distante = fetch("/distance", params={"categoria": "mas_distante"})
+df_mas_distante = pd.DataFrame(data_mas_distante)
+data_menos_distante = fetch("/distance", params={"categoria": "menos_distante"})
+df_menos_distante = pd.DataFrame(data_menos_distante)
 
-        with col_mas_distante:
-            st.caption("Más distantes")
-            if hay_datos(df_mas_distante):
-                st.dataframe(
-                    df_mas_distante.drop(columns=["categoria"]), use_container_width=True
-                )
+with tarjeta_grafico("distancia-extremos"):
+    opcion_distancia = st.selectbox(
+        "Ranking a mostrar",
+        ["Más distantes", "Más cercanos"],
+        key="ranking_distancia",
+    )
+    df_ranking_distancia = (
+        df_mas_distante if opcion_distancia == "Más distantes" else df_menos_distante
+    )
+    if hay_datos(df_ranking_distancia):
+        st.table(tabla_estilizada(df_ranking_distancia.drop(columns=["categoria"])))
 
-        with col_menos_distante:
-            st.caption("Más cercanos")
-            if hay_datos(df_menos_distante):
-                st.dataframe(
-                    df_menos_distante.drop(columns=["categoria"]), use_container_width=True
-                )
+subseccion("Distribución de distancias")
 
-    with col_dist_distancia:
-        st.caption(
-            "La mayoría de los exoplanetas descubiertos están cerca de "
-            "nosotros porque son los más fáciles de confirmar — es probable "
-            "que haya muchos más esperando en estrellas más lejanas."
-        )
+parrafo(
+    "La mayoría de los exoplanetas descubiertos están cerca de "
+    "nosotros porque son los más fáciles de confirmar — es probable "
+    "que haya muchos más esperando en estrellas más lejanas."
+)
 
-        if hay_datos(df_position):
-            fig_distancia, ax_distancia = plt.subplots()
-            ax_distancia.hist(df_position["distance_pc"], bins=30, color=COLOR_SERIE)
-            ax_distancia.set_xlabel("Distancia [pc]")
-            ax_distancia.set_ylabel("Nº de planetas")
-            st.pyplot(fig_distancia)
+with tarjeta_grafico("distancia-histograma"):
+    if hay_datos(df_position):
+        fig_distancia, ax_distancia = plt.subplots(figsize=(6, 4))
+        ax_distancia.hist(df_position["distance_pc"], bins=30, color=COLOR_SERIE)
+        ax_distancia.set_xlabel("Distancia [pc]")
+        ax_distancia.set_ylabel("Nº de planetas")
+        st.pyplot(fig_distancia)
 
 # ============================================
 # Tamaño
 # ============================================
 
-with tab_tamano:
-    col_ranking_tamano, col_dist_tamano = st.columns(2)
+st.header("3. Tamaño", anchor="tamano")
 
-    with col_ranking_tamano:
-        st.caption(
-            "El planeta más grande hallado es casi 8 veces el tamaño de "
-            "Júpiter (87 radios terrestres). El más pequeño es más chico que "
-            "Mercurio, con solo el 31 % de su radio."
+subseccion("Los extremos")
+
+parrafo(
+    "El planeta más grande hallado es casi 8 veces el tamaño de "
+    "Júpiter (87 radios terrestres). El más pequeño es más chico que "
+    "Mercurio, con solo el 31 % de su radio."
+)
+
+data_mas_grande = fetch("/size", params={"categoria": "mas grande"})
+df_mas_grande = pd.DataFrame(data_mas_grande)
+data_mas_pequena = fetch("/size", params={"categoria": "mas pequeña"})
+df_mas_pequena = pd.DataFrame(data_mas_pequena)
+
+with tarjeta_grafico("tamano-extremos"):
+    opcion_tamano = st.selectbox(
+        "Ranking a mostrar",
+        ["Más grandes", "Más pequeños"],
+        key="ranking_tamano",
+    )
+    df_ranking_tamano = (
+        df_mas_grande if opcion_tamano == "Más grandes" else df_mas_pequena
+    )
+    if hay_datos(df_ranking_tamano):
+        st.table(tabla_estilizada(df_ranking_tamano.drop(columns=["categoria"])))
+
+subseccion("Distribución por tipo de planeta")
+
+parrafo(
+    "Los planetas grandes (sub-neptunos y jovianos) son los que más "
+    "se descubren — probablemente porque son los más fáciles de "
+    "detectar, no porque sean los más comunes."
+)
+
+with tarjeta_grafico("tamano-distribucion"):
+    data_dist_tamano = fetch("/size_distribution", params={"categoria": "por_tipo_planeta"})
+    df_dist_tamano = pd.DataFrame(data_dist_tamano)
+
+    if hay_datos(df_dist_tamano):
+        df_dist_tamano = df_dist_tamano[df_dist_tamano["clasificacion"] != "Desconocido"]
+        orden_tamano = [c for c in ORDEN_TAMANOS if c != "Desconocido"]
+        st.plotly_chart(
+            grafico_distribucion(df_dist_tamano, orden=orden_tamano),
+            use_container_width=True,
         )
-
-        data_mas_grande = fetch("/size", params={"categoria": "mas grande"})
-        df_mas_grande = pd.DataFrame(data_mas_grande)
-        data_mas_pequena = fetch("/size", params={"categoria": "mas pequeña"})
-        df_mas_pequena = pd.DataFrame(data_mas_pequena)
-
-        col_mas_grande, col_mas_pequena = st.columns(2)
-
-        with col_mas_grande:
-            st.caption("Más grandes")
-            if hay_datos(df_mas_grande):
-                st.dataframe(
-                    df_mas_grande.drop(columns=["categoria"]), use_container_width=True
-                )
-
-        with col_mas_pequena:
-            st.caption("Más pequeños")
-            if hay_datos(df_mas_pequena):
-                st.dataframe(
-                    df_mas_pequena.drop(columns=["categoria"]), use_container_width=True
-                )
-
-    with col_dist_tamano:
-        st.caption(
-            "Los planetas grandes (sub-neptunos y jovianos) son los que más "
-            "se descubren — probablemente porque son los más fáciles de "
-            "detectar, no porque sean los más comunes."
-        )
-
-        data_dist_tamano = fetch("/size_distribution", params={"categoria": "por_tipo_planeta"})
-        df_dist_tamano = pd.DataFrame(data_dist_tamano)
-
-        if hay_datos(df_dist_tamano):
-            df_dist_tamano = df_dist_tamano[df_dist_tamano["clasificacion"] != "Desconocido"]
-            orden_tamano = [c for c in ORDEN_TAMANOS if c != "Desconocido"]
-            st.plotly_chart(
-                grafico_distribucion(df_dist_tamano, orden=orden_tamano),
-                use_container_width=True,
-            )
-            st.caption(RANGO_TAMANOS)
+        st.caption(RANGO_TAMANOS)
 
 # ============================================
 # Sistema
 # ============================================
 
-with tab_sistema:
-    st.caption(
-        "La mayoría de los sistemas tiene 1 solo exoplaneta confirmado; el "
-        "máximo encontrado es 8, igual que en nuestro propio sistema solar."
-    )
+st.header("4. Sistema", anchor="sistema")
 
+parrafo(
+    "La mayoría de los sistemas tiene 1 solo exoplaneta confirmado; el "
+    "máximo encontrado es 8, igual que en nuestro propio sistema solar."
+)
+
+with tarjeta_grafico("sistema"):
     data_dist_sistema = fetch(
         "/system_distribution", params={"categoria": "distribucion_num_planetas"}
     )
@@ -466,98 +686,105 @@ with tab_sistema:
 # Habitabilidad
 # ============================================
 
-with tab_habitabilidad:
-    col_ranking_hab, col_dist_hab = st.columns(2)
+st.header("5. Habitabilidad", anchor="habitabilidad")
 
-    with col_ranking_hab:
-        st.caption(
-            "El sistema con más planetas en zona habitable tiene 3 — más que "
-            "el nuestro, que tiene 2 (Tierra y Marte)."
+subseccion("Ranking de habitabilidad")
+
+parrafo(
+    "El sistema con más planetas en zona habitable tiene 3 — más que "
+    "el nuestro, que tiene 2 (Tierra y Marte)."
+)
+
+with tarjeta_grafico("habitabilidad-ranking"):
+    data_habitabilidad = fetch("/habitability")
+    df_habitabilidad = pd.DataFrame(data_habitabilidad)
+
+    if hay_datos(df_habitabilidad):
+        st.table(tabla_estilizada(df_habitabilidad))
+
+subseccion("Distribución por habitabilidad")
+
+parrafo(
+    "La mayoría de los planetas detectados están muy cerca de su "
+    "estrella (y muy calientes) — otra vez, sesgo de detección: son "
+    "los más fáciles de encontrar."
+)
+
+with tarjeta_grafico("habitabilidad-distribucion"):
+    categoria_dist_hab = st.selectbox(
+        "Distribución por habitabilidad",
+        ["por_habitability", "por_temp_habitability"],
+        key="dist_habitabilidad",
+    )
+
+    data_dist_hab = fetch(
+        "/habitability_distribution", params={"categoria": categoria_dist_hab}
+    )
+    df_dist_hab = pd.DataFrame(data_dist_hab)
+
+    if hay_datos(df_dist_hab):
+        df_dist_hab = df_dist_hab[df_dist_hab["clasificacion"] != "Desconocido"]
+        if categoria_dist_hab == "por_habitability":
+            orden_hab = [c for c in ORDEN_HABITABILIDAD if c != "Desconocido"]
+        else:
+            orden_hab = [c for c in ORDEN_TEMP_HABITABILIDAD if c != "Desconocido"]
+
+        st.plotly_chart(
+            grafico_distribucion(df_dist_hab, orden=orden_hab),
+            use_container_width=True,
         )
 
-        data_habitabilidad = fetch("/habitability")
-        df_habitabilidad = pd.DataFrame(data_habitabilidad)
-
-        if hay_datos(df_habitabilidad):
-            st.dataframe(df_habitabilidad, use_container_width=True)
-
-    with col_dist_hab:
-        st.caption(
-            "La mayoría de los planetas detectados están muy cerca de su "
-            "estrella (y muy calientes) — otra vez, sesgo de detección: son "
-            "los más fáciles de encontrar."
-        )
-
-        categoria_dist_hab = st.selectbox(
-            "Distribución por habitabilidad",
-            ["por_habitability", "por_temp_habitability"],
-            key="dist_habitabilidad",
-        )
-
-        data_dist_hab = fetch(
-            "/habitability_distribution", params={"categoria": categoria_dist_hab}
-        )
-        df_dist_hab = pd.DataFrame(data_dist_hab)
-
-        if hay_datos(df_dist_hab):
-            df_dist_hab = df_dist_hab[df_dist_hab["clasificacion"] != "Desconocido"]
-            if categoria_dist_hab == "por_habitability":
-                orden_hab = [c for c in ORDEN_HABITABILIDAD if c != "Desconocido"]
-            else:
-                orden_hab = [c for c in ORDEN_TEMP_HABITABILIDAD if c != "Desconocido"]
-
-            st.plotly_chart(
-                grafico_distribucion(df_dist_hab, orden=orden_hab),
-                use_container_width=True,
-            )
-
-            if categoria_dist_hab == "por_temp_habitability":
-                st.caption(RANGO_TEMP_HABITABILIDAD)
+        if categoria_dist_hab == "por_temp_habitability":
+            st.caption(RANGO_TEMP_HABITABILIDAD)
 
 # ============================================
 # Mapa estelar
 # ============================================
 
-with tab_mapa:
-    st.caption(
-        "Posición de cada estrella con planetas confirmados, calculada a "
-        "partir de su ascensión recta, declinación y distancia. El Sol está "
-        "en el centro (0, 0, 0); el plano amarillo tenue es la eclíptica "
-        "(por donde orbita la Tierra) y el plano gris tenue es la "
-        "orientación del disco de la Vía Láctea — ambos solo como "
-        "referencia, no a escala real. Arrastra para rotar, rueda del mouse "
-        "para hacer zoom."
-    )
+st.header("6. Mapa estelar", anchor="mapa-estelar")
 
-    @st.dialog("Mapa estelar 3D", width="large")
-    def mostrar_mapa_fullscreen():
-        st.plotly_chart(grafico_mapa_3d(df_position, altura=800), use_container_width=True)
+st.caption(
+    "Posición de cada estrella con planetas confirmados, calculada a "
+    "partir de su ascensión recta, declinación y distancia. El Sol está "
+    "en el centro (0, 0, 0); el plano amarillo tenue es la eclíptica "
+    "(por donde orbita la Tierra) y el plano gris tenue es la "
+    "orientación del disco de la Vía Láctea — ambos solo como "
+    "referencia, no a escala real. Arrastra para rotar, rueda del mouse "
+    "para hacer zoom."
+)
 
-    col_espacio_mapa, col_boton_mapa = st.columns([5, 1])
-    with col_boton_mapa:
-        if st.button("⛶ Pantalla completa", use_container_width=True, key="btn_mapa_fullscreen"):
-            mostrar_mapa_fullscreen()
 
-    if hay_datos(df_position):
-        st.plotly_chart(grafico_mapa_3d(df_position), use_container_width=True)
+@st.dialog("Mapa estelar 3D", width="large")
+def mostrar_mapa_fullscreen():
+    st.plotly_chart(grafico_mapa_3d(df_position, altura=800), use_container_width=True)
+
+
+col_espacio_mapa, col_boton_mapa = st.columns([5, 1])
+with col_boton_mapa:
+    if st.button("⛶ Pantalla completa", use_container_width=True, key="btn_mapa_fullscreen"):
+        mostrar_mapa_fullscreen()
+
+if hay_datos(df_position):
+    st.plotly_chart(grafico_mapa_3d(df_position), use_container_width=True)
 
 # ============================================
 # Conclusión
 # ============================================
 
-with tab_conclusion:
-    st.markdown(
-        "Todas las gráficas nos mostraron algo contundente, nuestros métodos "
-        "para detectar planetas no son suficientes, los planetas más fáciles de "
-        "encontrar son aquellos grandes, poco distantes y cercanos a sus "
-        "respectivas estrellas, siendo los llamados júpiters calientes los más "
-        "comunes. Todo esto generaría un gran sesgo si no se hiciese un análisis "
-        "más profundo ¿Cuánto nos estaremos perdiendo? Posiblemente haya más "
-        "planetas e incluso asteroides o lunas que no detectamos, posiblemente "
-        "cada uno de esos sistemas tienen una gran variedad de cuerpos, al igual "
-        "que nuestro sistema solar, pero indetectables con la tecnología actual. "
-        "Nos dimos cuenta que recién estamos en pañales cuando hablamos de "
-        "detección de exoplanetas, aún falta muchísimo más por mejorar. Ojalá en "
-        "un futuro se logre desarrollar más estas técnicas o encontrar nuevas "
-        "formas de buscar cuerpos más allá de nuestro sistema solar."
-    )
+st.header("7. Conclusión", anchor="conclusion")
+
+parrafo(
+    "Todas las gráficas nos mostraron algo contundente, nuestros métodos "
+    "para detectar planetas no son suficientes, los planetas más fáciles de "
+    "encontrar son aquellos grandes, poco distantes y cercanos a sus "
+    "respectivas estrellas, siendo los llamados júpiters calientes los más "
+    "comunes. Todo esto generaría un gran sesgo si no se hiciese un análisis "
+    "más profundo ¿Cuánto nos estaremos perdiendo? Posiblemente haya más "
+    "planetas e incluso asteroides o lunas que no detectamos, posiblemente "
+    "cada uno de esos sistemas tienen una gran variedad de cuerpos, al igual "
+    "que nuestro sistema solar, pero indetectables con la tecnología actual. "
+    "Nos dimos cuenta que recién estamos en pañales cuando hablamos de "
+    "detección de exoplanetas, aún falta muchísimo más por mejorar. Ojalá en "
+    "un futuro se logre desarrollar más estas técnicas o encontrar nuevas "
+    "formas de buscar cuerpos más allá de nuestro sistema solar."
+)
