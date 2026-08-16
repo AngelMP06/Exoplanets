@@ -157,14 +157,30 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-API_BASE_URL = os.getenv("URL")
+API_BASE_URL = os.getenv("API_BASE_URL")
+if not API_BASE_URL:
+    st.error(
+        "Falta configurar la variable de entorno API_BASE_URL con la URL "
+        "de la API."
+    )
+    st.stop()
 
 
 @st.cache_data(ttl=600)
 def fetch(endpoint, params=None):
-    r = requests.get(f"{API_BASE_URL}{endpoint}", params=params)
-    r.raise_for_status()
-    return r.json()
+    # La API en Render puede tardar ~20s en despertar si estuvo inactiva —
+    # timeout generoso en vez de dejar que la request cuelgue indefinido, y
+    # un error legible en vez del traceback crudo de requests/Streamlit.
+    try:
+        r = requests.get(f"{API_BASE_URL}{endpoint}", params=params, timeout=30)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.RequestException:
+        st.error(
+            "No se pudo conectar con la API — puede tardar ~20s en "
+            "despertar si estuvo inactiva. Recargá la página en un momento."
+        )
+        st.stop()
 
 
 # ============================================
@@ -196,6 +212,14 @@ COLOR_SERIE = "#2a78d6"
 FUENTE_GRAFICOS = "'Space Grotesk', sans-serif"
 COLOR_TEXTO_GRAFICO = "#3b3b3b"
 COLOR_GRID_GRAFICO = "rgba(11, 11, 11, 0.08)"
+
+# Constantes astronómicas para los párrafos de "los extremos" (Distancia y
+# Tamaño): el número puntual siempre sale del DataFrame recién fetcheado,
+# nunca hardcodeado — pero convertirlo a años luz o compararlo con Júpiter/
+# Mercurio necesita estas referencias fijas.
+PC_A_ANIOS_LUZ = 3.26156
+RADIO_JUPITER_TIERRA = 11.2
+RADIO_MERCURIO_TIERRA = 0.383
 
 # Rangos de las categorías que clasifican por un valor numérico (ver schema.md).
 # Se muestran debajo de su gráfico correspondiente para que quede claro qué
@@ -515,7 +539,7 @@ st.markdown(
             pocos los confirmados frente a las ~100 mil estrellas de la
             galaxia — probablemente queden muchísimos más por descubrir.
         </p>
-        <div class="banner-metrica">🪐 {num_exoplanetas:,} exoplanetas confirmados</div>
+        <div class="banner-metrica">🪐 {num_exoplanetas:,} exoplanetas confirmados con posición conocida</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -667,18 +691,24 @@ with col_contenido:
 
     st.header("2. Distancia", anchor="distancia")
 
-    subseccion("Los extremos")
-
-    parrafo(
-        "El planeta más distante confirmado está a 8500 pc (27 722 años "
-        "luz) — el límite actual de lo que podemos ver. El más cercano "
-        "está a 1.3 pc (4.2 años luz), orbitando Próxima Centauri."
-    )
-
     data_mas_distante = fetch("/distance", params={"categoria": "mas_distante"})
     df_mas_distante = pd.DataFrame(data_mas_distante)
     data_menos_distante = fetch("/distance", params={"categoria": "menos_distante"})
     df_menos_distante = pd.DataFrame(data_menos_distante)
+
+    subseccion("Los extremos")
+
+    fila_mas_lejano = df_mas_distante.loc[df_mas_distante["distance_pc"].idxmax()]
+    fila_mas_cercano = df_menos_distante.loc[df_menos_distante["distance_pc"].idxmin()]
+    parrafo(
+        f"El planeta más distante confirmado está a "
+        f"{fila_mas_lejano['distance_pc']:,.0f} pc "
+        f"(~{fila_mas_lejano['distance_pc'] * PC_A_ANIOS_LUZ:,.0f} años luz) — "
+        f"el límite actual de lo que podemos ver. El más cercano está a "
+        f"{fila_mas_cercano['distance_pc']:.1f} pc "
+        f"(~{fila_mas_cercano['distance_pc'] * PC_A_ANIOS_LUZ:.1f} años luz), "
+        f"orbitando {fila_mas_cercano['star_name']}."
+    )
 
     with tarjeta_grafico("distancia-extremos"):
         opcion_distancia = st.selectbox(
@@ -710,18 +740,22 @@ with col_contenido:
 
     st.header("3. Tamaño", anchor="tamano")
 
-    subseccion("Los extremos")
-
-    parrafo(
-        "El planeta más grande hallado es casi 8 veces el tamaño de "
-        "Júpiter (87 radios terrestres). El más pequeño es más chico que "
-        "Mercurio, con solo el 31 % de su radio."
-    )
-
     data_mas_grande = fetch("/size", params={"categoria": "mas grande"})
     df_mas_grande = pd.DataFrame(data_mas_grande)
     data_mas_pequena = fetch("/size", params={"categoria": "mas pequeña"})
     df_mas_pequena = pd.DataFrame(data_mas_pequena)
+
+    subseccion("Los extremos")
+
+    radio_max = df_mas_grande["planet_radius_earth"].max()
+    radio_min = df_mas_pequena["planet_radius_earth"].min()
+    parrafo(
+        f"El planeta más grande hallado es casi "
+        f"{radio_max / RADIO_JUPITER_TIERRA:.0f} veces el tamaño de Júpiter "
+        f"({radio_max:.0f} radios terrestres). El más pequeño es más chico "
+        f"que Mercurio, con solo el {radio_min / RADIO_MERCURIO_TIERRA:.0%} "
+        f"de su radio."
+    )
 
     with tarjeta_grafico("tamano-extremos"):
         opcion_tamano = st.selectbox(
@@ -762,17 +796,19 @@ with col_contenido:
 
     st.header("4. Sistema", anchor="sistema")
 
+    data_dist_sistema = fetch(
+        "/system_distribution", params={"categoria": "distribucion_num_planetas"}
+    )
+    df_dist_sistema = pd.DataFrame(data_dist_sistema)
+
+    max_planetas_sistema = int(df_dist_sistema["clasificacion"].max())
     parrafo(
-        "La mayoría de los sistemas tiene 1 solo exoplaneta confirmado; el "
-        "máximo encontrado es 8, igual que en nuestro propio sistema solar."
+        f"La mayoría de los sistemas tiene 1 solo exoplaneta confirmado; el "
+        f"máximo encontrado es {max_planetas_sistema}, igual que en nuestro "
+        f"propio sistema solar."
     )
 
     with tarjeta_grafico("sistema"):
-        data_dist_sistema = fetch(
-            "/system_distribution", params={"categoria": "distribucion_num_planetas"}
-        )
-        df_dist_sistema = pd.DataFrame(data_dist_sistema)
-
         if hay_datos(df_dist_sistema):
             # `clasificacion` es un entero: se ordena numéricamente y después se pasa a
             # texto, para que el eje sea categórico y no deje huecos entre valores.
@@ -793,17 +829,19 @@ with col_contenido:
 
     st.header("5. Habitabilidad", anchor="habitabilidad")
 
+    data_habitabilidad = fetch("/habitability")
+    df_habitabilidad = pd.DataFrame(data_habitabilidad)
+
     subseccion("Ranking de habitabilidad")
 
+    max_habitables = int(df_habitabilidad["planetas_habitables"].max())
     parrafo(
-        "El sistema con más planetas en zona habitable tiene 3 — más que "
-        "el nuestro, que tiene 2 (Tierra y Marte)."
+        f"El sistema con más planetas en zona habitable tiene "
+        f"{max_habitables} — más que el nuestro, que tiene 2 (Tierra y "
+        f"Marte)."
     )
 
     with tarjeta_grafico("habitabilidad-ranking"):
-        data_habitabilidad = fetch("/habitability")
-        df_habitabilidad = pd.DataFrame(data_habitabilidad)
-
         if hay_datos(df_habitabilidad):
             st.table(tabla_estilizada(df_habitabilidad))
 
