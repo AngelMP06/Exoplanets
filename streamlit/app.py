@@ -195,12 +195,27 @@ ORDEN_TAMANOS = [
     "Desconocido",
 ]
 
-ORDEN_HABITABILIDAD = ["Zona habitable", "Muy cerca", "Muy lejos", "Desconocido"]
+ORDEN_HABITABILIDAD = ["Muy cerca", "Zona habitable", "Muy lejos", "Desconocido"]
 
 ORDEN_TEMP_HABITABILIDAD = [
     "hP - hypopsychroplanet", "P - psychroplanet", "M - mesoplanet",
     "T - thermoplanet", "hT - hyperthermoplanet", "Desconocido",
 ]
+
+ORDEN_DISCOVERY_ERA = ["Pre-Kepler", "Era Kepler", "Era TESS"]
+
+# Value → etiqueta de cada selectbox: la key es el valor real que espera la
+# API (categoria del mart), el value es lo que ve el usuario — para poder
+# mostrar un texto lindo sin tocar el parámetro que se manda al backend.
+OPCIONES_DESCUBRIMIENTO = {
+    "por_año": "Por año",
+    "tendencia_acumulada": "Tendencia acumulada",
+    "por_discovery_era": "Por era de telescopio",
+}
+OPCIONES_HABITABILIDAD = {
+    "por_habitability": "Habitabilidad según posición",
+    "por_temp_habitability": "Habitabilidad por temperatura",
+}
 
 # Un solo azul: con una sola serie el color no codifica nada, así que no hay
 # leyenda que leer.
@@ -220,21 +235,39 @@ COLOR_GRID_GRAFICO = "rgba(11, 11, 11, 0.08)"
 PC_A_ANIOS_LUZ = 3.26156
 RADIO_JUPITER_TIERRA = 11.2
 RADIO_MERCURIO_TIERRA = 0.383
+PLANETAS_SISTEMA_SOLAR = 8
+# Bajo el mismo criterio de zona habitable que usa mart_planets (0.75-1.77 UA
+# equivalente, ver mart_planets.sql), la Tierra y Marte caen dentro — no es
+# un redondeo optimista nuestro, es consistente con cómo se clasifica acá el
+# resto de los planetas.
+PLANETAS_HABITABLES_SISTEMA_SOLAR = 2
 
 # Rangos de las categorías que clasifican por un valor numérico (ver schema.md).
-# Se muestran debajo de su gráfico correspondiente para que quede claro qué
-# significa cada categoría.
-RANGO_TAMANOS = (
-    "Mercury-like: < 0.5 · Mini-Earth: 0.5–0.8 · Earth-like: 0.8–1.2 · "
-    "Super-Earth: 1.2–1.75 · Transition: 1.75–2.1 · Sub-Neptune: 2.1–4 · "
-    "Neptune-like: 4–8 · Jovian-like: > 8 (radios terrestres)"
-)
-RANGO_TEMP_HABITABILIDAD = (
-    "hP - hypopsychroplanet: < −50 °C · P - psychroplanet: −50 a 0 °C · "
-    "M - mesoplanet: 0 a 50 °C · T - thermoplanet: 50 a 100 °C · "
-    "hT - hyperthermoplanet: ≥ 100 °C"
-)
-RANGO_DISCOVERY_ERA = "Pre-Kepler: antes de 2009 · Era Kepler: 2009–2017 · Era TESS: desde 2018"
+# Listas de (categoría, rango) en vez de un string largo con "·": se muestran
+# como leyenda vertical a la derecha del gráfico correspondiente (ver
+# leyenda_rangos), no como una línea de texto debajo.
+RANGO_TAMANOS = [
+    ("Mercury-like", "< 0.5"),
+    ("Mini-Earth", "0.5–0.8"),
+    ("Earth-like", "0.8–1.2"),
+    ("Super-Earth", "1.2–1.75"),
+    ("Transition", "1.75–2.1"),
+    ("Sub-Neptune", "2.1–4"),
+    ("Neptune-like", "4–8"),
+    ("Jovian-like", "> 8"),
+]
+RANGO_TEMP_HABITABILIDAD = [
+    ("hP - hypopsychroplanet", "< −50 °C"),
+    ("P - psychroplanet", "−50 a 0 °C"),
+    ("M - mesoplanet", "0 a 50 °C"),
+    ("T - thermoplanet", "50 a 100 °C"),
+    ("hT - hyperthermoplanet", "≥ 100 °C"),
+]
+RANGO_DISCOVERY_ERA = [
+    ("Pre-Kepler", "antes de 2009"),
+    ("Era Kepler", "2009–2017"),
+    ("Era TESS", "desde 2018"),
+]
 
 # Rampa secuencial de un solo hue (azul, claro→oscuro) para codificar distancia
 # en el mapa 3D: mismo criterio de color que el resto de la página.
@@ -269,6 +302,18 @@ def hay_datos(df, mensaje="Sin datos para esta selección."):
         st.info(mensaje)
         return False
     return True
+
+
+def comparacion_con_referencia(valor, referencia):
+    """Frase "más/menos/igual que <referencia>" para comparar un número que
+    viene del dataset (puede cambiar con nuevos descubrimientos) contra una
+    referencia fija — para que la afirmación siga siendo cierta aunque el
+    valor del dataset cambie, en vez de quedar hardcodeada para un solo caso."""
+    if valor > referencia:
+        return "más que"
+    if valor < referencia:
+        return "menos que"
+    return "igual que"
 
 
 _contador_columna = 0
@@ -341,6 +386,24 @@ def tabla_estilizada(df):
             ]},
         ])
         .apply(lambda _: [f"background-color: {c}" for c in colores_fila], axis=0)
+    )
+
+
+def leyenda_rangos(items, nota=None):
+    """Leyenda vertical (categoría → rango) para mostrar al costado de un
+    gráfico de barras, en vez de una línea de texto larga debajo — se lee
+    mejor como leyenda cuando tiene su propia columna angosta a la derecha."""
+    filas = "".join(
+        f'<div style="margin-bottom:0.35rem;"><b>{cat}</b>: {rango}</div>'
+        for cat, rango in items
+    )
+    nota_html = (
+        f'<div style="margin-top:0.4rem;font-style:italic;">{nota}</div>' if nota else ""
+    )
+    st.markdown(
+        f'<div style="font-size:0.8rem;color:#5a5a5a;line-height:1.4;">'
+        f'{filas}{nota_html}</div>',
+        unsafe_allow_html=True,
     )
 
 
@@ -536,8 +599,9 @@ st.markdown(
         <h1>Exoplanetas</h1>
         <p>
             Planetas que orbitan una estrella distinta al Sol. Todavía son
-            pocos los confirmados frente a las ~100 mil estrellas de la
-            galaxia — probablemente queden muchísimos más por descubrir.
+            pocos los confirmados frente a las ~100 mil millones de
+            estrellas de la galaxia — probablemente queden muchísimos más
+            por descubrir.
         </p>
         <div class="banner-metrica">🪐 {num_exoplanetas:,} exoplanetas confirmados con posición conocida</div>
     </div>
@@ -598,7 +662,8 @@ with col_contenido:
     with tarjeta_grafico("descubrimiento-tiempo"):
         categoria_descubrimiento = st.selectbox(
             "Distribución por descubrimiento",
-            ["por_año", "tendencia_acumulada", "por_discovery_era"],
+            list(OPCIONES_DESCUBRIMIENTO.keys()),
+            format_func=lambda k: OPCIONES_DESCUBRIMIENTO[k],
             key="dist_descubrimiento",
         )
 
@@ -637,14 +702,18 @@ with col_contenido:
             else:  # por_discovery_era
                 fig_descubrimiento = grafico_distribucion(
                     df_descubrimiento,
-                    orden=list(df_descubrimiento["clasificacion"]),
+                    orden=ORDEN_DISCOVERY_ERA,
                     etiquetas={"clasificacion": "Era", "conteo": "Nº de planetas"},
                 )
 
-            st.plotly_chart(fig_descubrimiento, use_container_width=True)
-
             if categoria_descubrimiento == "por_discovery_era":
-                st.caption(RANGO_DISCOVERY_ERA)
+                col_grafico, col_leyenda = st.columns([2, 1])
+                with col_grafico:
+                    st.plotly_chart(fig_descubrimiento, use_container_width=True)
+                with col_leyenda:
+                    leyenda_rangos(RANGO_DISCOVERY_ERA)
+            else:
+                st.plotly_chart(fig_descubrimiento, use_container_width=True)
 
     subseccion("Cómo se descubrieron")
 
@@ -662,11 +731,13 @@ with col_contenido:
         "una estrella debido a que está siendo afectada por la "
         "gravedad de un planeta que la orbita, ya que ambos orbitan "
         "un centro de gravedad común.\n\n"
-        "El tercer método es de microlente gravitacional, este "
-        "consiste en detectar cuando la gravedad de un planeta que "
-        "pasa frente a una estrella y curva su luz, esto añade un "
-        "pico de luz de extra brillo que permite medir su masa y "
-        "posición. Este método es utilizado para detectar planetas "
+        "El tercer método es el de microlente gravitacional: cuando una "
+        "estrella con un planeta pasa por delante de otra estrella mucho "
+        "más lejana, su gravedad actúa como una lupa y curva la luz de "
+        "esa estrella de fondo, generando un pico de brillo. Si hay un "
+        "planeta orbitándola, agrega una pequeña distorsión extra a ese "
+        "pico, que permite estimar su masa y la distancia a la que "
+        "orbita. Este método es utilizado para detectar planetas "
         "lejanos que otros métodos no pueden detectar."
     )
 
@@ -784,11 +855,14 @@ with col_contenido:
         if hay_datos(df_dist_tamano):
             df_dist_tamano = df_dist_tamano[df_dist_tamano["clasificacion"] != "Desconocido"]
             orden_tamano = [c for c in ORDEN_TAMANOS if c != "Desconocido"]
-            st.plotly_chart(
-                grafico_distribucion(df_dist_tamano, orden=orden_tamano),
-                use_container_width=True,
-            )
-            st.caption(RANGO_TAMANOS)
+            col_grafico, col_leyenda = st.columns([2, 1])
+            with col_grafico:
+                st.plotly_chart(
+                    grafico_distribucion(df_dist_tamano, orden=orden_tamano),
+                    use_container_width=True,
+                )
+            with col_leyenda:
+                leyenda_rangos(RANGO_TAMANOS, nota="Radios terrestres")
 
     # ============================================
     # Sistema
@@ -802,10 +876,11 @@ with col_contenido:
     df_dist_sistema = pd.DataFrame(data_dist_sistema)
 
     max_planetas_sistema = int(df_dist_sistema["clasificacion"].max())
+    comparacion_sistema = comparacion_con_referencia(max_planetas_sistema, PLANETAS_SISTEMA_SOLAR)
     parrafo(
         f"La mayoría de los sistemas tiene 1 solo exoplaneta confirmado; el "
-        f"máximo encontrado es {max_planetas_sistema}, igual que en nuestro "
-        f"propio sistema solar."
+        f"máximo encontrado es {max_planetas_sistema}, {comparacion_sistema} "
+        f"en nuestro propio sistema solar ({PLANETAS_SISTEMA_SOLAR})."
     )
 
     with tarjeta_grafico("sistema"):
@@ -835,10 +910,11 @@ with col_contenido:
     subseccion("Ranking de habitabilidad")
 
     max_habitables = int(df_habitabilidad["planetas_habitables"].max())
+    comparacion_hab = comparacion_con_referencia(max_habitables, PLANETAS_HABITABLES_SISTEMA_SOLAR)
     parrafo(
         f"El sistema con más planetas en zona habitable tiene "
-        f"{max_habitables} — más que el nuestro, que tiene 2 (Tierra y "
-        f"Marte)."
+        f"{max_habitables} — {comparacion_hab} el nuestro, que tiene "
+        f"{PLANETAS_HABITABLES_SISTEMA_SOLAR} (Tierra y Marte)."
     )
 
     with tarjeta_grafico("habitabilidad-ranking"):
@@ -856,7 +932,8 @@ with col_contenido:
     with tarjeta_grafico("habitabilidad-distribucion"):
         categoria_dist_hab = st.selectbox(
             "Distribución por habitabilidad",
-            ["por_habitability", "por_temp_habitability"],
+            list(OPCIONES_HABITABILIDAD.keys()),
+            format_func=lambda k: OPCIONES_HABITABILIDAD[k],
             key="dist_habitabilidad",
         )
 
@@ -872,13 +949,20 @@ with col_contenido:
             else:
                 orden_hab = [c for c in ORDEN_TEMP_HABITABILIDAD if c != "Desconocido"]
 
-            st.plotly_chart(
-                grafico_distribucion(df_dist_hab, orden=orden_hab),
-                use_container_width=True,
-            )
-
             if categoria_dist_hab == "por_temp_habitability":
-                st.caption(RANGO_TEMP_HABITABILIDAD)
+                col_grafico, col_leyenda = st.columns([2, 1])
+                with col_grafico:
+                    st.plotly_chart(
+                        grafico_distribucion(df_dist_hab, orden=orden_hab),
+                        use_container_width=True,
+                    )
+                with col_leyenda:
+                    leyenda_rangos(RANGO_TEMP_HABITABILIDAD)
+            else:
+                st.plotly_chart(
+                    grafico_distribucion(df_dist_hab, orden=orden_hab),
+                    use_container_width=True,
+                )
 
     # ============================================
     # Mapa estelar
