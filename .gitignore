@@ -14,3 +14,4 @@ CLAUDE.md
 __pycache__/
 .ipynb_checkpoints
 .pytest_cache/
+.ipynb_checkpoints/

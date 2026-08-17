@@ -551,7 +551,14 @@ def grafico_histograma_distancia(df, altura=400):
 # ============================================
 
 df_position = pd.DataFrame(fetch("/position"))
-num_exoplanetas = len(df_position)
+
+# mart_position solo trae los planetas con ra/dec/distancia completos (para
+# el mapa 3D y el histograma), así que len(df_position) subcuenta el total
+# real. "por_metodo" agrupa sobre mart_planets entero, sin ese filtro —
+# discovery_method nunca es nulo — así que sumar su "conteo" da el total
+# real de exoplanetas confirmados.
+data_metodo_total = fetch("/discovery_distribution", params={"categoria": "por_metodo"})
+num_exoplanetas = sum(fila["conteo"] for fila in data_metodo_total)
 
 st.markdown(
     f"""
@@ -598,12 +605,12 @@ st.markdown(
     <div class="banner-exoplanetas">
         <h1>Exoplanetas</h1>
         <p>
-            Planetas que orbitan una estrella distinta al Sol. Todavía son
-            pocos los confirmados frente a las ~100 mil millones de
-            estrellas de la galaxia — probablemente queden muchísimos más
-            por descubrir.
+            Planetas que giran alrededor de otra estrella que no es el Sol.
+            Todavía conocemos pocos, comparado con las ~100 mil millones de
+            estrellas que tiene la galaxia — seguramente queden muchísimos
+            más por descubrir.
         </p>
-        <div class="banner-metrica">🪐 {num_exoplanetas:,} exoplanetas confirmados con posición conocida</div>
+        <div class="banner-metrica">🪐 {num_exoplanetas:,} exoplanetas confirmados</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -639,24 +646,19 @@ with col_contenido:
     subseccion("Cuándo se descubrieron")
 
     parrafo(
-        "Los primeros exoplanetas se descubrieron en 1992. El salto entre "
-        "2014 y 2016 no es un pico real de detecciones: son planetas "
-        "hallados antes y confirmados después, gracias al telescopio "
-        "Kepler de la NASA.\n\n"
-        "Los primeros 2 exoplanetas fueron descubiertos en 1992, dichos "
-        "planetas orbitaban un púlsar llamado Lich. Este fue el inicio "
-        "de la búsqueda de más exoplanetas en nuestra galaxia.\n\n"
-        "Vemos que entre los años 2014 y 2016 se hicieron el "
-        "descubrimiento de varios exoplanetas, sin embargo, no es que "
-        "esos exoplanetas se hayan detectado en esos años, se "
-        "detectaron en años anteriores, pero tuvieron que esperar "
-        "hasta esos años para, mediante estudios científicos, "
-        "confirmar su existencia.\n\n"
-        "Fue gracias al telescopio Kepler de la NASA, que publicó "
-        "enormes lotes de datos espaciales acumulados e introdujo "
-        "métodos avanzados de verificación estadística que "
-        "confirmaron miles de candidatos a planetas a la vez, por eso "
-        "tiene la mayor cantidad de descubrimientos."
+        "Los dos primeros exoplanetas se descubrieron en 1992. Orbitaban "
+        "un púlsar (una estrella muerta que gira rapidísimo) al que "
+        "después le pusieron el nombre de Lich. Ahí arrancó todo.\n\n"
+        "Si mirás el gráfico, vas a ver un salto enorme entre 2014 y "
+        "2016. Pero ese salto no significa que se hayan encontrado más "
+        "planetas justo esos años, significa que se confirmaron. "
+        "Muchos ya se habían detectado antes; solo hacía falta más "
+        "tiempo y más estudios para confirmar que eran reales.\n\n"
+        "Ese salto es obra del telescopio Kepler, de la NASA. Kepler "
+        "juntó tantísimos datos que los científicos desarrollaron "
+        "nuevas formas de confirmar miles de candidatos a la vez, en "
+        "vez de uno por uno. Por eso Kepler tiene, de lejos, la mayor "
+        "cantidad de descubrimientos."
     )
 
     with tarjeta_grafico("descubrimiento-tiempo"):
@@ -718,27 +720,22 @@ with col_contenido:
     subseccion("Cómo se descubrieron")
 
     parrafo(
-        "El método de tránsito (observar cuándo cae el brillo de una "
-        "estrella) es el que más exoplanetas ha detectado, seguido de la "
-        "velocidad radial y el microlente gravitacional.\n\n"
-        "Indiscutiblemente, el mejor método para detectar exoplanetas "
-        "es el transitorio, el cual consiste en observar el valor de "
-        "la luminosidad de una estrella para ver si es que disminuye "
-        "debido a que un planeta se ha puesto entre dicha estrella y "
-        "el telescopio que la observa.\n\n"
-        "El segundo método que descubrió más exoplanetas es el de la "
-        "velocidad radial, este detecta el \"bamboleo\" periódico de "
-        "una estrella debido a que está siendo afectada por la "
-        "gravedad de un planeta que la orbita, ya que ambos orbitan "
-        "un centro de gravedad común.\n\n"
-        "El tercer método es el de microlente gravitacional: cuando una "
-        "estrella con un planeta pasa por delante de otra estrella mucho "
-        "más lejana, su gravedad actúa como una lupa y curva la luz de "
-        "esa estrella de fondo, generando un pico de brillo. Si hay un "
-        "planeta orbitándola, agrega una pequeña distorsión extra a ese "
-        "pico, que permite estimar su masa y la distancia a la que "
-        "orbita. Este método es utilizado para detectar planetas "
-        "lejanos que otros métodos no pueden detectar."
+        "El método que más exoplanetas encontró es el de tránsito: "
+        "miras una estrella y esperas a que su brillo baje un poco. "
+        "Si baja de forma regular, es porque algo (un planeta) está "
+        "pasando justo por delante, tapando una parte de esa luz.\n\n"
+        "El segundo método es la velocidad radial. Un planeta no solo "
+        "gira alrededor de su estrella: la estrella también se mueve un "
+        "poco por la gravedad del planeta, como un bamboleo. Ese vaivén "
+        "se puede medir, y así se puede encontrar un nuevo planeta.\n\n"
+        "El tercero es el microlente gravitacional, el más raro de "
+        "explicar: cuando una estrella con un planeta pasa justo por "
+        "delante de otra mucho más lejana, su gravedad funciona como "
+        "una lupa y curva la luz de esa estrella de fondo, generando "
+        "un pico de brillo. Si hay un planeta, deja una pequeña marca "
+        "extra en ese pico, que sirve para calcular su masa y a qué "
+        "distancia orbita. Es el método que mejor funciona para "
+        "encontrar planetas muy lejanos, donde los demás no llegan."
     )
 
     with tarjeta_grafico("descubrimiento-metodo"):
@@ -767,18 +764,18 @@ with col_contenido:
     data_menos_distante = fetch("/distance", params={"categoria": "menos_distante"})
     df_menos_distante = pd.DataFrame(data_menos_distante)
 
-    subseccion("Los extremos")
+    subseccion("El más lejano y el más cercano")
 
     fila_mas_lejano = df_mas_distante.loc[df_mas_distante["distance_pc"].idxmax()]
     fila_mas_cercano = df_menos_distante.loc[df_menos_distante["distance_pc"].idxmin()]
     parrafo(
-        f"El planeta más distante confirmado está a "
-        f"{fila_mas_lejano['distance_pc']:,.0f} pc "
-        f"(~{fila_mas_lejano['distance_pc'] * PC_A_ANIOS_LUZ:,.0f} años luz) — "
-        f"el límite actual de lo que podemos ver. El más cercano está a "
-        f"{fila_mas_cercano['distance_pc']:.1f} pc "
-        f"(~{fila_mas_cercano['distance_pc'] * PC_A_ANIOS_LUZ:.1f} años luz), "
-        f"orbitando {fila_mas_cercano['star_name']}."
+        f"El planeta confirmado más lejano está a "
+        f"{fila_mas_lejano['distance_pc']:,.0f} pc de nosotros "
+        f"(unos {fila_mas_lejano['distance_pc'] * PC_A_ANIOS_LUZ:,.0f} años "
+        f"luz) — hasta ahí llega, por ahora, lo que podemos detectar. El "
+        f"más cercano está a solo {fila_mas_cercano['distance_pc']:.1f} pc "
+        f"({fila_mas_cercano['distance_pc'] * PC_A_ANIOS_LUZ:.1f} años "
+        f"luz), orbitando la estrella {fila_mas_cercano['star_name']}."
     )
 
     with tarjeta_grafico("distancia-extremos"):
@@ -793,12 +790,14 @@ with col_contenido:
         if hay_datos(df_ranking_distancia):
             st.table(tabla_estilizada(df_ranking_distancia.drop(columns=["categoria"])))
 
-    subseccion("Distribución de distancias")
+    subseccion("Qué tan lejos están, en general")
 
     parrafo(
-        "La mayoría de los exoplanetas descubiertos están cerca de "
-        "nosotros porque son los más fáciles de confirmar — es probable "
-        "que haya muchos más esperando en estrellas más lejanas."
+        "La mayoría de los exoplanetas que conocemos están relativamente "
+        "cerca de nosotros. No es casualidad: cuanto más cerca está un "
+        "planeta, más fácil es detectarlo. Seguramente hay muchísimos "
+        "más dando vueltas alrededor de estrellas lejanas, todavía "
+        "esperando a que los encontremos."
     )
 
     with tarjeta_grafico("distancia-histograma"):
@@ -816,16 +815,17 @@ with col_contenido:
     data_mas_pequena = fetch("/size", params={"categoria": "mas pequeña"})
     df_mas_pequena = pd.DataFrame(data_mas_pequena)
 
-    subseccion("Los extremos")
+    subseccion("El más grande y el más chico")
 
     radio_max = df_mas_grande["planet_radius_earth"].max()
     radio_min = df_mas_pequena["planet_radius_earth"].min()
     parrafo(
-        f"El planeta más grande hallado es casi "
-        f"{radio_max / RADIO_JUPITER_TIERRA:.0f} veces el tamaño de Júpiter "
-        f"({radio_max:.0f} radios terrestres). El más pequeño es más chico "
-        f"que Mercurio, con solo el {radio_min / RADIO_MERCURIO_TIERRA:.0%} "
-        f"de su radio."
+        f"El planeta más grande que encontramos mide casi "
+        f"{radio_max / RADIO_JUPITER_TIERRA:.0f} veces el tamaño de "
+        f"Júpiter, unos {radio_max:.0f} radios terrestres. En el otro "
+        f"extremo, el más chico ni siquiera llega al tamaño de Mercurio: "
+        f"mide apenas el {radio_min / RADIO_MERCURIO_TIERRA:.0%} de su "
+        f"radio."
     )
 
     with tarjeta_grafico("tamano-extremos"):
@@ -840,12 +840,13 @@ with col_contenido:
         if hay_datos(df_ranking_tamano):
             st.table(tabla_estilizada(df_ranking_tamano.drop(columns=["categoria"])))
 
-    subseccion("Distribución por tipo de planeta")
+    subseccion("Qué tipos de planeta hay")
 
     parrafo(
-        "Los planetas grandes (sub-neptunos y jovianos) son los que más "
-        "se descubren — probablemente porque son los más fáciles de "
-        "detectar, no porque sean los más comunes."
+        "Los planetas grandes, del tamaño de Neptuno o Júpiter para "
+        "arriba, son los que más aparecen en la lista. Otra vez el "
+        "mismo motivo: son más fáciles de detectar por su tamaño, no " \
+        "necesariamente más comunes en el universo."
     )
 
     with tarjeta_grafico("tamano-distribucion"):
@@ -878,9 +879,10 @@ with col_contenido:
     max_planetas_sistema = int(df_dist_sistema["clasificacion"].max())
     comparacion_sistema = comparacion_con_referencia(max_planetas_sistema, PLANETAS_SISTEMA_SOLAR)
     parrafo(
-        f"La mayoría de los sistemas tiene 1 solo exoplaneta confirmado; el "
-        f"máximo encontrado es {max_planetas_sistema}, {comparacion_sistema} "
-        f"en nuestro propio sistema solar ({PLANETAS_SISTEMA_SOLAR})."
+        f"La mayoría de los sistemas que conocemos tiene un solo "
+        f"exoplaneta confirmado. El sistema con más planetas que "
+        f"encontramos tiene {max_planetas_sistema}, {comparacion_sistema} "
+        f"al igual que el nuestro."
     )
 
     with tarjeta_grafico("sistema"):
@@ -907,26 +909,27 @@ with col_contenido:
     data_habitabilidad = fetch("/habitability")
     df_habitabilidad = pd.DataFrame(data_habitabilidad)
 
-    subseccion("Ranking de habitabilidad")
+    subseccion("Los sistemas con más planetas habitables")
 
     max_habitables = int(df_habitabilidad["planetas_habitables"].max())
     comparacion_hab = comparacion_con_referencia(max_habitables, PLANETAS_HABITABLES_SISTEMA_SOLAR)
     parrafo(
         f"El sistema con más planetas en zona habitable tiene "
-        f"{max_habitables} — {comparacion_hab} el nuestro, que tiene "
-        f"{PLANETAS_HABITABLES_SISTEMA_SOLAR} (Tierra y Marte)."
+        f"{max_habitables} planetas habitables, más que nuestro sistema solar"
+        f", que tiene {PLANETAS_HABITABLES_SISTEMA_SOLAR} (la Tierra y Marte)."
     )
 
     with tarjeta_grafico("habitabilidad-ranking"):
         if hay_datos(df_habitabilidad):
             st.table(tabla_estilizada(df_habitabilidad))
 
-    subseccion("Distribución por habitabilidad")
+    subseccion("Qué tan habitables son, en general")
 
     parrafo(
-        "La mayoría de los planetas detectados están muy cerca de su "
-        "estrella (y muy calientes) — otra vez, sesgo de detección: son "
-        "los más fáciles de encontrar."
+        "La mayoría de los planetas que detectamos están cerca a su "
+        "estrella, y por lo tanto son bastante calientes. De nuevo el "
+        "mismo patrón: los que están cerca son los más fáciles de "
+        "encontrar, así que son los que más aparecen."
     )
 
     with tarjeta_grafico("habitabilidad-distribucion"):
@@ -971,13 +974,13 @@ with col_contenido:
     st.header("6. Mapa estelar", anchor="mapa-estelar")
 
     st.caption(
-        "Posición de cada estrella con planetas confirmados, calculada a "
-        "partir de su ascensión recta, declinación y distancia. El Sol está "
-        "en el centro (0, 0, 0); el plano amarillo tenue es la eclíptica "
-        "(por donde orbita la Tierra) y el plano gris tenue es la "
-        "orientación del disco de la Vía Láctea — ambos solo como "
-        "referencia, no a escala real. Arrastra para rotar, rueda del mouse "
-        "para hacer zoom."
+        "Acá están ubicadas todas las estrellas con planetas confirmados, "
+        "calculadas a partir de su posición en el cielo y su distancia. El "
+        "Sol está justo en el centro. El plano de color amarillo suave es"
+        "el plano de la eclíptica (por donde se mueve la Tierra alrededor del Sol) y el "
+        "plano gris marca hacia dónde se extiende la Vía Láctea, los dos son "
+        "solo de referencia, no están a escala real. Pueds arrastrar para "
+        "rotar y usar la rueda del mouse para hacer zoom."
     )
 
 
@@ -1001,17 +1004,21 @@ with col_contenido:
     st.header("7. Conclusión", anchor="conclusion")
 
     parrafo(
-        "Todas las gráficas nos mostraron algo contundente, nuestros métodos "
-        "para detectar planetas no son suficientes, los planetas más fáciles de "
-        "encontrar son aquellos grandes, poco distantes y cercanos a sus "
-        "respectivas estrellas, siendo los llamados júpiters calientes los más "
-        "comunes. Todo esto generaría un gran sesgo si no se hiciese un análisis "
-        "más profundo ¿Cuánto nos estaremos perdiendo? Posiblemente haya más "
-        "planetas e incluso asteroides o lunas que no detectamos, posiblemente "
-        "cada uno de esos sistemas tienen una gran variedad de cuerpos, al igual "
-        "que nuestro sistema solar, pero indetectables con la tecnología actual. "
-        "Nos dimos cuenta que recién estamos en pañales cuando hablamos de "
-        "detección de exoplanetas, aún falta muchísimo más por mejorar. Ojalá en "
-        "un futuro se logre desarrollar más estas técnicas o encontrar nuevas "
-        "formas de buscar cuerpos más allá de nuestro sistema solar."
+        "Todos los gráficos de esta página cuentan, en el fondo, la misma "
+        "historia: nuestros métodos para detectar planetas todavía no "
+        "alcanzan. Lo que más encontramos son planetas grandes, cercanos "
+        "a su estrella y calientes —los famosos \"júpiters calientes\"— "
+        "no porque sean los más comunes, sino porque son los más fáciles "
+        "de ver.\n\n"
+        "Eso deja una pregunta abierta: ¿cuánto nos estamos perdiendo? "
+        "Probablemente haya muchos más planetas, lunas y asteroides ahí "
+        "afuera que todavía no podemos detectar. Nuestro propio sistema "
+        "solar tiene una variedad enorme de cuerpos —lunas, asteroides, "
+        "cometas— y si lo miráramos desde otra estrella, con la "
+        "tecnología actual, probablemente ni la mitad de eso sería "
+        "detectable.\n\n"
+        "Estamos recién empezando. Todavía falta mucho camino en la "
+        "búsqueda de exoplanetas, y ojalá en el futuro aparezcan mejores "
+        "técnicas — o formas completamente nuevas de buscar — para "
+        "encontrar todo lo que todavía se nos escapa."
     )
