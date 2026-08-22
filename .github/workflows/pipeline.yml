@@ -83,6 +83,7 @@ jobs:
           DUCKDB_PATH: exoplanets.duckdb
 
       - name: Subir JSON a S3 (carpeta pública)
+        working-directory: exoplanets
         run: python export/upload_to_s3.py
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
