@@ -1,6 +1,9 @@
 import duckdb
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DUCKDB_PATH = os.getenv("DUCKDB_PATH", "exoplanets.duckdb")
 OUTPUT_DIR = Path("export/output")

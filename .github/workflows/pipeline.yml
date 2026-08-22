@@ -74,17 +74,17 @@ jobs:
           aws s3 cp exoplanets.duckdb s3://${{ secrets.AWS_BUCKET_NAME }}/warehouse/exoplanets.duckdb
 
       - name: Instalar dependencias de export
-        run: pip install duckdb pandas boto3 --break-system-packages
-
+        run: pip install duckdb pandas boto3 python-dotenv --break-system-packages
+        
       - name: Exportar marts a JSON
         working-directory: exoplanets
-        run: python export/export_marts.py
+        run: python ../export/export_marts.py
         env:
           DUCKDB_PATH: exoplanets.duckdb
 
       - name: Subir JSON a S3 (carpeta pública)
         working-directory: exoplanets
-        run: python export/upload_to_s3.py
+        run: python ../export/upload_to_s3.py
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
