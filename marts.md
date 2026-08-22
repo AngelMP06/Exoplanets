@@ -26,6 +26,9 @@ fija `clasificacion` / `conteo` / `categoria`. `clasificacion` es el valor
 agrupado, `conteo` cuántas filas caen ahí, y `categoria` de qué agrupación viene.
 Grano: una fila por valor distinto dentro de cada agrupación.
 
+La excepción es `mart_position` (ver [Proyección](#proyección)): ni agrega ni
+rankea, es una fila por planeta sin tocar.
+
 ---
 
 ## Rankings
@@ -214,6 +217,42 @@ para un heatmap o barras agrupadas.
 
 No es el patrón `clasificacion`/`categoria`: al cruzar dos dimensiones, cada una
 se queda con su nombre real.
+
+---
+
+## Proyección
+
+### mart_position
+
+Posición de cada planeta, para el mapa 3D y el histograma de distancia. A
+diferencia de los rankings y las distribuciones, no agrega ni recorta: es
+`mart_planets` proyectado a solo las columnas que necesita un gráfico de
+posición, fila por planeta.
+
+- **Grano:** un planeta por fila
+- **Filas:** todas las que tengan las cinco columnas completas — no hay
+  `categoria` ni tope de 10, a diferencia de los patrones de arriba.
+- Se descartan los planetas con `ra_deg`, `dec_deg`, `distance_pc`,
+  `planet_name` o `star_name` nulos — alcanza con que falte uno solo de los
+  cinco para que la fila entera caiga. En la práctica el único filtro que
+  pesa es `distance_pc`: `ra_deg`/`dec_deg`/`planet_name`/`star_name` casi
+  no tienen nulos, así que la brecha entre `mart_position` y el total real
+  de `mart_planets` es chica (del orden de las pocas decenas de filas), pero
+  no cero.
+
+| columna     | tipo   | descripción                          |
+|-------------|--------|---------------------------------------|
+| ra_deg      | float  | Ascensión recta [grados decimales]    |
+| dec_deg     | float  | Declinación [grados decimales]        |
+| distance_pc | float  | Distancia al sistema [pc]             |
+| planet_name | string | Nombre del planeta                    |
+| star_name   | string | Estrella anfitriona                   |
+
+Ojo: como filtra por `distance_pc` (y por ra/dec) igual que `mart_distance`,
+`count(*)` sobre este mart **no** es el total de exoplanetas confirmados —
+es un subconjunto. Para el total real conviene sumar `conteo` sobre
+`mart_discovery_distribution` con `categoria = 'por_metodo'`, que agrupa
+sobre `mart_planets` entero sin filtrar por posición.
 
 ---
 
